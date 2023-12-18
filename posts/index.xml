@@ -6,8 +6,16 @@
     <description>Recent content in Posts on McElfresh Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 15 Dec 2023 12:51:36 -0800</lastBuildDate>
+    <lastBuildDate>Mon, 18 Dec 2023 12:26:51 -0800</lastBuildDate>
     <atom:link href="/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Move My Blog Hosting</title>
+      <link>/posts/move-blog-to-digital-ocean/</link>
+      <pubDate>Mon, 18 Dec 2023 12:26:51 -0800</pubDate>
+      <guid>/posts/move-blog-to-digital-ocean/</guid>
+      <description>Move My Blog Hosting to DigitalOcean App Platform Digital Ocean App Platform is a Platform-as-a-Service (PaaS) offering that allows publishing code directly to DigitalOcean servers, without managing any infrastructure.
+I created a Github repo that contains my site&amp;rsquo;s static files, generated from my Hugo static site generator, and I followed this guide to automatically deploy to Digital Ocean&amp;rsquo;s free tier for static sites each time I push to my repo&amp;rsquo;s main branch.</description>
+    </item>
     <item>
       <title>Go Slices Are Not Pointers</title>
       <link>/posts/go-slices-are-not-pointers/</link>
