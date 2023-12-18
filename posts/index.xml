@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on McElfresh Blog</title>
+    <link>/posts/</link>
+    <description>Recent content in Posts on McElfresh Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 15 Dec 2023 12:51:36 -0800</lastBuildDate>
+    <atom:link href="/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Go Slices Are Not Pointers</title>
+      <link>/posts/go-slices-are-not-pointers/</link>
+      <pubDate>Fri, 15 Dec 2023 12:51:36 -0800</pubDate>
+      <guid>/posts/go-slices-are-not-pointers/</guid>
+      <description>What is a Go Slice? A Go slice is a descriptor of an array segment, with three fields:
+A pointer to an element of its underlying array The slice&amp;rsquo;s length The slice&amp;rsquo;s capacity Arrays vs Slices An array&amp;rsquo;s length is part of its type; for example, [2]int is a different type from [3]int. Where we know the length of an array before compile time, and its length never changes over the lifetime of a program, arrays are often preferable to slices.</description>
+    </item>
+    <item>
+      <title>Twirp -- Build Simple, High Performance Go HTTP Protobuf Services</title>
+      <link>/posts/charlie-go-part-1/</link>
+      <pubDate>Tue, 28 Nov 2023 11:18:40 -0800</pubDate>
+      <guid>/posts/charlie-go-part-1/</guid>
+      <description>Overview Twirp is an RPC / protobuf framework developed by Twitch.tv. It offers some very powerful features:
+JSON or protobuf responses, depending on the request Content-Type header (application/protobuf or application/json) Hooks sprinkled throughout the request / response lifecycle Interceptors, Twirp&amp;rsquo;s middleware Auto-generated clients in in all popular languages (Go, Rust, Ruby, Node, Python, etc.) Built on top of Go&amp;rsquo;s net/http package. How it works We&amp;rsquo;re going to walk through the code in some detail, and there is a lot to absorb.</description>
+    </item>
+    <item>
+      <title>Deploy Static Website to Fargate (Part 4)</title>
+      <link>/posts/hugo-aws-part-4/</link>
+      <pubDate>Sat, 25 Nov 2023 11:18:40 -0800</pubDate>
+      <guid>/posts/hugo-aws-part-4/</guid>
+      <description>Create AWS Resources with Terraform and Deploy to Fargate Overview In parts 1-3, we created a static website using Hugo, we output static html files with the &amp;ldquo;hugo&amp;rdquo; command, and we copied those files into a Docker image, which we plan to deploy to AWS Fargate.
+Aside from basic SOA and NS records we create manually in AWS Route53, everything else in our stack is created with Terraform, from files in the &amp;ldquo;build&amp;rdquo; directory at the root of the app.</description>
+    </item>
+    <item>
+      <title>Deploy Static Website to Fargate (Part 3)</title>
+      <link>/posts/hugo-aws-part-3/</link>
+      <pubDate>Sat, 25 Nov 2023 11:18:40 -0800</pubDate>
+      <guid>/posts/hugo-aws-part-3/</guid>
+      <description>Create Our Site Docker Image To create static files to serve in production, run
+hugo
+and notice all the new static files that were generated in /public
+Build our Nginx Container Start with a popular, stable Nginx container docker pull nginx:alpine
+Start up an nginx:alpine container: docker run -it &amp;lt;image id&amp;gt;
+Copy its nginx default.conf into our project docker cp &amp;lt;container name or image id&amp;gt;:/etc/nginx/conf.d/default.conf ~/
+Or, shell into the container docker exec -it &amp;lt;image name or id&amp;gt; sh cd /etc/nginx ## copy entire file contents into memory Add a healthcheck to our copy of nginx.</description>
+    </item>
+    <item>
+      <title>Deploy Static Website to Fargate (Part 2)</title>
+      <link>/posts/hugo-aws-part-2/</link>
+      <pubDate>Sat, 25 Nov 2023 11:18:40 -0800</pubDate>
+      <guid>/posts/hugo-aws-part-2/</guid>
+      <description>Create Our Blog as a Static Site with Hugo Hugo is a static site generator written in Go. We write static pages in Markdown, then choose a theme (I chose Ezhil), then Hugo will generate static HTML with our theme&amp;rsquo;s CSS.
+Install Hugo
+Create our site
+hugo new site charlie-blog cd charlie-blog git init git submodule add https://github.com/vividvilla/ezhil themes/ezhil echo &amp;#34;theme = &amp;#39;ezhil&amp;#39;&amp;#34; &amp;gt;&amp;gt; hugo.toml hugo server Now Hugo should be running on http://localhost:1313</description>
+    </item>
+    <item>
+      <title>Deploy Static Website to Fargate (Part 1)</title>
+      <link>/posts/hugo-aws-part-1/</link>
+      <pubDate>Sat, 25 Nov 2023 11:18:40 -0800</pubDate>
+      <guid>/posts/hugo-aws-part-1/</guid>
+      <description>Hugo, Elastic Container Registry (ECR), Fargate, Elastic Container Service (ECS), Application Load Balancer (ALB), Route53, Amazon Certificate Manager (ACM), Built with Terraform Hugo is a static site generator that allows for writing pages in Markdown, then displays them in HTML Nginx I&amp;rsquo;m building my static site in an alpine:nginx container, and pushing it to a private Amazon Elastic Container Registry Build and deploy to Amazon Web Services (AWS) using Terraform Terraform is an Infrastructure as code tool.</description>
+    </item>
+  </channel>
+</rss>
