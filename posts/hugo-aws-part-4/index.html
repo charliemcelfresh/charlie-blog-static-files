@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Deploy Static Website to Fargate (Part 4) - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="Deploy Static Website to Fargate (Part 4)" />
+<meta property="og:description" content="Fargate/Elastic Container Service (ECS), Application Load Balancer (ALB), Route53, Amazon Certificate Manager (ACM), Built with Terraform" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/hugo-aws-part-4/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-11-25T11:18:40-08:00" />
+<meta property="article:modified_time" content="2023-11-25T11:18:40-08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Deploy Static Website to Fargate (Part 4)"/>
+<meta name="twitter:description" content="Fargate/Elastic Container Service (ECS), Application Load Balancer (ALB), Route53, Amazon Certificate Manager (ACM), Built with Terraform"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Deploy Static Website to Fargate (Part 4)</h1>
+			<div class="meta">Posted at &mdash; Nov 25, 2023</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="create-aws-resources-with-terraform-and-deploy-to-fargate">Create AWS Resources with Terraform and Deploy to Fargate</h3>
+<h4 id="overview">Overview</h4>
+<p>In parts 1-3, we created a static website using Hugo, we output static html files with the &ldquo;hugo&rdquo; command, and we copied those files into a Docker image, which we plan to deploy to AWS Fargate.</p>
+<p>Aside from basic SOA and NS records we create manually in AWS Route53, everything else in our stack is created with Terraform, from files in the &ldquo;build&rdquo; directory at the root of the app.</p>
+<p>In a nutshell, we are taking the container we made in Part 3, and running it behind an Application Load Balancer (ALB) in AWS&rsquo;s Fargate flavor of its Elastic Container Service (ECS). Fargate runs containers using serverless, meaning that we have no Elastic Compute Cloud (EC2) instances to manage. We&rsquo;re letting AWS handle DNS through Route53, and our SSL certificate through Amazon Certificate Manager (ACM).</p>
+<p>Here&rsquo;s what our Terraform templates do:</p>
+<ul>
+<li>Create DNS records
+<ul>
+<li>Create A records for mcelfresh.info and *.mcelfresh.info</li>
+<li>Create a CNAME record for the purpose of validating our SSL certificate via AWS Amazon Certificate Manager (ACM)</li>
+</ul>
+</li>
+<li>Create an Application Load Balancer (ALB)
+<ul>
+<li>Our ALB is our front door, and requires https. If it receives non-https traffic, it redirects it to https</li>
+<li>Traffic from our ALB to Elastic Container Service / Fargate is http</li>
+</ul>
+</li>
+<li>Create our network, subnets, vpcs, and security groups
+<ul>
+<li>We want our ALB to be the only component that access the Internet. All other components communicate via private subnets.</li>
+</ul>
+</li>
+<li>Launch our image as a container</li>
+</ul>
+<p>The tricky parts:</p>
+<ul>
+<li>AWS Privatelink &ndash; setting up ECS / Fargate such that it can pull our image without requiring a NAT Gateway</li>
+<li>Getting our Amazon Certificate Manager (ACM) to work with our Route53 code, such that our SSL cert is created and verified programmatically</li>
+</ul>
+<h4 id="create-our-base-route53-record">Create our Base Route53 Record</h4>
+<p>We begin by creating a Route53 record manually, with the default NS and SOA entries. It&rsquo;s certainly possible to allow Terraform to create these, but, once we create them, we don&rsquo;t want to allow them to be destroyed, because each time we create new NS records, AWS will choose new nameservers for us, and then we have to enter new nameservers with our registrar.</p>
+<p>Everything else in this project is created by Terraform; here is a rundown of our templates:</p>
+<h4 id="configtf">config.tf</h4>
+<pre tabindex="0"><code># config.tf
+provider &#34;aws&#34; {
+  region  = &#34;us-west-2&#34;
+  profile = &#34;tfuser&#34;
+}
+
+terraform {
+  required_version = &#34;&gt;= 1.0&#34;
+  # &#34;backend&#34; block cannot reference variables, so they are hardcoded here
+  backend &#34;s3&#34; {
+    bucket  = &#34;cwmcelfresh-terraform&#34;
+    key     = &#34;terraform.tfstate&#34;
+    region  = &#34;us-west-2&#34;
+    profile = &#34;tfuser&#34;
+  }
+
+  required_providers {
+    aws = {
+      source  = &#34;hashicorp/aws&#34;
+      version = &#34;~&gt; 3.69.0&#34;
+    }
+  }
+}
+</code></pre><h4 id="iamtf">iam.tf</h4>
+<p>The idea here is to let the user that is running Terraform code assume a role that allows it to do only what the templates call for. Amazon has a <a href="%22https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html%22">AmazonECSTaskExecutionRolePolicy</a> for just this purpose.</p>
+<pre tabindex="0"><code># iam.tf
+
+# This is the role under which ECS will execute our task. This role becomes more important
+# as we add integrations with other AWS services later on.
+
+# The assume_role_policy field works with the following aws_iam_policy_document to allow
+# ECS tasks to assume this role we&#39;re creating.
+resource &#34;aws_iam_role&#34; &#34;charlie_blog_task_execution_role&#34; {
+  name               = &#34;charlie-blog-task-execution-role&#34;
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+}
+
+data &#34;aws_iam_policy_document&#34; &#34;ecs_task_assume_role&#34; {
+  statement {
+    actions = [&#34;sts:AssumeRole&#34;]
+
+    principals {
+      type        = &#34;Service&#34;
+      identifiers = [&#34;ecs-tasks.amazonaws.com&#34;]
+    }
+  }
+}
+
+# The role we need to execute this task
+data &#34;aws_iam_policy&#34; &#34;ecs_task_execution_role&#34; {
+  arn = &#34;arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy&#34;
+}
+
+# Attach the above policy to the execution role.
+resource &#34;aws_iam_role_policy_attachment&#34; &#34;ecs_task_execution_role&#34; {
+  role       = aws_iam_role.charlie_blog_task_execution_role.name
+  policy_arn = data.aws_iam_policy.ecs_task_execution_role.arn
+}
+</code></pre><pre tabindex="0"><code># variables.tf
+# These variables are available to any .tf file in this directory
+# Often, variables have defaults, but that is not useful here.
+# These variables are set by exporting TF_VAR_&lt;variable_name&gt; as
+# environment variables, ie TF_VAR_charlie_blog_aws_region and
+# TF_VAR_charlie_blog_image
+
+variable &#34;charlie_blog_image&#34; {
+  type = string
+}
+
+variable &#34;charlie_blog_aws_region&#34; {
+  type = string
+}
+</code></pre><h4 id="route53tf--acmtf">route53.tf &amp;&amp; acm.tf</h4>
+<p>In route53.tf, we create A records for both mcelfresh.info, and *.mcelfresh.info, so that later, we can use any mcelfresh.info subdomain we want to. acm.tf creates an SSL certificate for both as well, so that mcelfresh.info and any of its subdomains we use later will be covered by our SSL cert.</p>
+<p>These two files work together to validate our SSL cert, by creating a CNAME in DNS, with a unique name / value pair. Our code creates an SSL cert, then the <code>aws_acm_certificate_validation</code> block looks up that CNAME. The idea here is that in order for Amazon Certifiate Manager (ACM) to allow us to create an SSL cert, it needs to know we have control of our DNS. So AWS says &ldquo;create a DNS CNAME with this unique name / value pair&rdquo;, and then it waits to see whether we&rsquo;ve created that. Once AWS sees we have created that CNAME, it issues our (free) SSL cert to us.</p>
+<pre tabindex="0"><code># route53.tf
+
+# Set our route53 zone for use in this template
+data &#34;aws_route53_zone&#34; &#34;mcelfresh_info&#34; {
+  name = &#34;mcelfresh.info&#34;
+}
+
+# DNS A record for mcelfresh.info
+resource &#34;aws_route53_record&#34; &#34;apex&#34; {
+  zone_id = data.aws_route53_zone.mcelfresh_info.zone_id
+  name    = &#34;mcelfresh.info&#34;
+  type    = &#34;A&#34;
+  alias {
+    name                   = aws_alb.charlie_blog.dns_name
+    zone_id                = aws_alb.charlie_blog.zone_id
+    evaluate_target_health = true
+  }
+  depends_on = [aws_alb.charlie_blog]
+}
+
+# DNS A record for *.mcelfresh.info
+resource &#34;aws_route53_record&#34; &#34;wildcard&#34; {
+  zone_id = data.aws_route53_zone.mcelfresh_info.zone_id
+  name    = &#34;*.mcelfresh.info&#34;
+  type    = &#34;A&#34;
+  alias {
+    name                   = aws_alb.charlie_blog.dns_name
+    zone_id                = aws_alb.charlie_blog.zone_id
+    evaluate_target_health = true
+  }
+  depends_on = [aws_alb.charlie_blog]
+}
+
+# DNS CNAME record for for Amazon Certificate Manager (acm) validation
+resource &#34;aws_route53_record&#34; &#34;acm_validation&#34; {
+  for_each = {
+    for dvo in aws_acm_certificate.mcelfresh_info.domain_validation_options : dvo.domain_name =&gt; {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.mcelfresh_info.zone_id
+}
+</code></pre><pre tabindex="0"><code># acm.tf
+
+# Our SSL certificate. Note that although docs claim the wildcard encompasses
+# mcelfresh.info, it doesn&#39;t -- so here we include both wildcard *.mcelfresh.info
+# and mcelfresh.info
+resource &#34;aws_acm_certificate&#34; &#34;mcelfresh_info&#34; {
+  lifecycle {
+    create_before_destroy = true
+  }
+  domain_name       = &#34;mcelfresh.info&#34;
+  validation_method = &#34;DNS&#34;
+  subject_alternative_names = [
+    &#34;*.mcelfresh.info&#34;
+  ]
+}
+
+# See resource &#34;aws_alb_listener&#34; &#34;charlie_blog_https&#34; in alb.tf
+resource &#34;aws_acm_certificate_validation&#34; &#34;mcelfresh_info&#34; {
+  certificate_arn         = aws_acm_certificate.mcelfresh_info.arn
+  validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
+}
+</code></pre><h4 id="networktf">network.tf</h4>
+<p>We set up our network so that there is one Internet Gateway (igw) into our Application Load Balancer (ALB). All port 80 traffic is redirected to 443, thus requiring SSL at the ALB.</p>
+<p>ALB communicates with our container via port 80.</p>
+<p>Note that we set up communication between our ALB and our private Elastic Container Registry (ECR) via <a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/vpc-endpoints.html">AWS Privatelink</a>. The alternative is to set up a NAT Gateway, and pull our Docker image over the Internet. We prefer to access our private ECR inside our private network, rather than over the &rsquo;net. And, AWS charges about $1/day for each NAT Gateway, and we don&rsquo;t want to pay that.</p>
+<p>We need to set up access to S3 because AWS stores image layers there. S3 and ECR access must be over port 443. These Privatelink VPCs are a bit tricky; we&rsquo;ll go into more detail in our vpcs.tf.</p>
+<pre tabindex="0"><code># network.tf
+
+## Create redundant public and private subnets in two availability zones
+resource &#34;aws_subnet&#34; &#34;public_d&#34; {
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = &#34;10.0.1.0/25&#34;
+  availability_zone = &#34;${var.charlie_blog_aws_region}d&#34;
+
+  tags = {
+    &#34;Name&#34; = &#34;public | ${var.charlie_blog_aws_region}d&#34;
+  }
+}
+
+resource &#34;aws_subnet&#34; &#34;public_e&#34; {
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = &#34;10.0.1.128/25&#34;
+  availability_zone = &#34;${var.charlie_blog_aws_region}c&#34;
+
+  tags = {
+    &#34;Name&#34; = &#34;public | ${var.charlie_blog_aws_region}c&#34;
+  }
+}
+
+resource &#34;aws_subnet&#34; &#34;private_d&#34; {
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = &#34;10.0.2.0/25&#34;
+  availability_zone = &#34;${var.charlie_blog_aws_region}d&#34;
+
+  tags = {
+    &#34;Name&#34; = &#34;private | ${var.charlie_blog_aws_region}d&#34;
+  }
+}
+
+resource &#34;aws_subnet&#34; &#34;private_e&#34; {
+  vpc_id            = aws_vpc.app_vpc.id
+  cidr_block        = &#34;10.0.2.128/25&#34;
+  availability_zone = &#34;${var.charlie_blog_aws_region}c&#34;
+
+  tags = {
+    &#34;Name&#34; = &#34;private | ${var.charlie_blog_aws_region}c&#34;
+  }
+}
+
+# public and private route tables
+resource &#34;aws_route_table&#34; &#34;public&#34; {
+  vpc_id = aws_vpc.app_vpc.id
+  tags = {
+    &#34;Name&#34; = &#34;public&#34;
+  }
+}
+
+resource &#34;aws_route_table&#34; &#34;private&#34; {
+  vpc_id = aws_vpc.app_vpc.id
+  tags = {
+    &#34;Name&#34; = &#34;private&#34;
+  }
+}
+
+# associate subnets with route tables
+resource &#34;aws_route_table_association&#34; &#34;public_d_subnet&#34; {
+  subnet_id      = aws_subnet.public_d.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource &#34;aws_route_table_association&#34; &#34;private_d_subnet&#34; {
+  subnet_id      = aws_subnet.private_d.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource &#34;aws_route_table_association&#34; &#34;public_e_subnet&#34; {
+  subnet_id      = aws_subnet.public_e.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource &#34;aws_route_table_association&#34; &#34;private_e_subnet&#34; {
+  subnet_id      = aws_subnet.private_e.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource &#34;aws_internet_gateway&#34; &#34;igw&#34; {
+  vpc_id = aws_vpc.app_vpc.id
+}
+
+# public gateway route
+resource &#34;aws_route&#34; &#34;public_igw&#34; {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = &#34;0.0.0.0/0&#34;
+  gateway_id             = aws_internet_gateway.igw.id
+}
+
+# http ingress for alb
+resource &#34;aws_security_group&#34; &#34;http&#34; {
+  name        = &#34;http&#34;
+  description = &#34;HTTP traffic&#34;
+  vpc_id      = aws_vpc.app_vpc.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = &#34;TCP&#34;
+    cidr_blocks = [&#34;0.0.0.0/0&#34;]
+  }
+  tags = {
+    Name = &#34;http&#34;
+  }
+}
+
+# https ingress for alb
+resource &#34;aws_security_group&#34; &#34;https&#34; {
+  name        = &#34;https&#34;
+  description = &#34;HTTPS traffic&#34;
+  vpc_id      = aws_vpc.app_vpc.id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = &#34;TCP&#34;
+    cidr_blocks = [&#34;0.0.0.0/0&#34;]
+  }
+  tags = {
+    Name = &#34;https&#34;
+  }
+}
+
+# egress for alb
+resource &#34;aws_security_group&#34; &#34;egress_alb&#34; {
+  name        = &#34;egress_alb&#34;
+  description = &#34;Allow all outbound traffic from alb&#34;
+  vpc_id      = aws_vpc.app_vpc.id
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = &#34;TCP&#34;
+    cidr_blocks = [&#34;0.0.0.0/0&#34;]
+  }
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = &#34;TCP&#34;
+    cidr_blocks = [&#34;0.0.0.0/0&#34;]
+  }
+  tags = {
+    Name = &#34;egress_alb&#34;
+  }
+}
+
+# ingress to s3 and ecr
+resource &#34;aws_security_group&#34; &#34;vpce&#34; {
+  name   = &#34;vpce&#34;
+  vpc_id = aws_vpc.app_vpc.id
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = &#34;TCP&#34;
+    cidr_blocks = [aws_vpc.app_vpc.cidr_block]
+  }
+  tags = {
+    Name = &#34;vpce&#34;
+  }
+}
+
+# egress from ecs task to s3 and ecr
+resource &#34;aws_security_group&#34; &#34;ecs_task&#34; {
+  name   = &#34;ecs&#34;
+  vpc_id = aws_vpc.app_vpc.id
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = &#34;tcp&#34;
+    cidr_blocks = [aws_vpc.app_vpc.cidr_block]
+  }
+  egress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = &#34;tcp&#34;
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+  tags = {
+    Name = &#34;ecs_task&#34;
+  }
+}
+</code></pre><h4 id="vpcstf">vpcs.tf</h4>
+<p>This template implements Amazon Privatelink for all our internal resources:</p>
+<ul>
+<li>AWS Simple Cloud Storage (S3). We need this because AWS stores image layers in S3</li>
+<li>Private Elastic Cloud Registry (ECR), where we push our Docker image. Note that ECR requires two VPCs</li>
+<li>Logs</li>
+</ul>
+<p>The tricky parts:</p>
+<ul>
+<li><code>enable_dns_hostnames</code> and <code>enable_dns_support</code> in our first block. These lines are what allow communication with the services that list <code>private_dns_enabled = true</code> below</li>
+<li>Setting up networking &ndash; note that our S3 &ldquo;Gateway&rdquo; VPC requires <code>route_table_ids</code>, but the remaining &ldquo;Interface&rdquo; VPCs require <code>subnet_ids</code></li>
+</ul>
+<pre tabindex="0"><code># vpcs.tf
+
+# VPC Endpoints
+# enable_dns_hostnames and enable_dns_support are required for the below VPC
+# endpoints that use private_dns_enabled = true
+# Think about it: our app_vpc needs some way to find the VPC endpoints
+resource &#34;aws_vpc&#34; &#34;app_vpc&#34; {
+  cidr_block           = &#34;10.0.0.0/16&#34;
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+}
+
+# All the below vpc endpoints are in private subnets
+# We want our VPC endpoints to be in private subnets so that they are not
+
+# Gateway-type VPCs must use route_table_ids and not subnet_ids
+resource &#34;aws_vpc_endpoint&#34; &#34;s3&#34; {
+  vpc_id            = aws_vpc.app_vpc.id
+  service_name      = &#34;com.amazonaws.${var.charlie_blog_aws_region}.s3&#34;
+  vpc_endpoint_type = &#34;Gateway&#34;
+  route_table_ids   = [aws_route_table.private.id]
+  tags = {
+    Name = &#34;s3-endpoint&#34;
+  }
+}
+
+# Interface-type VPCs must use subnet_ids instead of route_table_ids
+resource &#34;aws_vpc_endpoint&#34; &#34;dkr&#34; {
+  vpc_id              = aws_vpc.app_vpc.id
+  private_dns_enabled = true
+  service_name        = &#34;com.amazonaws.${var.charlie_blog_aws_region}.ecr.dkr&#34;
+  vpc_endpoint_type   = &#34;Interface&#34;
+  security_group_ids = [
+    aws_security_group.vpce.id,
+  ]
+  subnet_ids = [aws_subnet.private_d.id,
+  aws_subnet.private_e.id, ]
+  tags = {
+    Name = &#34;dkr-endpoint&#34;
+  }
+}
+
+# Interface-type VPCs must use subnet_ids instead of route_table_ids
+resource &#34;aws_vpc_endpoint&#34; &#34;dkr_api&#34; {
+  vpc_id              = aws_vpc.app_vpc.id
+  private_dns_enabled = true
+  service_name        = &#34;com.amazonaws.${var.charlie_blog_aws_region}.ecr.api&#34;
+  vpc_endpoint_type   = &#34;Interface&#34;
+  security_group_ids = [
+    aws_security_group.vpce.id,
+  ]
+  subnet_ids = [aws_subnet.private_d.id,
+  aws_subnet.private_e.id, ]
+  tags = {
+    Name = &#34;dkr-api-endpoint&#34;
+  }
+}
+
+# Interface-type VPCs must use subnet_ids instead of route_table_ids
+resource &#34;aws_vpc_endpoint&#34; &#34;logs&#34; {
+  vpc_id              = aws_vpc.app_vpc.id
+  private_dns_enabled = true
+  service_name        = &#34;com.amazonaws.${var.charlie_blog_aws_region}.logs&#34;
+  vpc_endpoint_type   = &#34;Interface&#34;
+  security_group_ids = [
+    aws_security_group.vpce.id,
+  ]
+  subnet_ids = [aws_subnet.private_d.id,
+  aws_subnet.private_e.id, ]
+  tags = {
+    Name = &#34;logs-endpoint&#34;
+  }
+}
+</code></pre><h4 id="fargatetf--albtf">fargate.tf &amp;&amp; alb.tf</h4>
+<p>These files are pretty straightforward. fargate.tf sets up our Elastic Container Service (ECS) as a Fargate service, sets up its network, and tells it where to find our container. alb.tf sets up our load balancer, with all its required components, tells all port 80 traffic it has to go to port 443, etc.</p>
+<p>Of note, as mentioned in part 3, our load balancer creates a health_check, as AWS requires.</p>
+<pre tabindex="0"><code># fargate.tf
+
+# Fargate is a serverless container service, that makes container management easier
+# by removing the need to manage the underlying infrastructure.
+
+# Domain name mcelfresh.info is hardcoded everywhere in an attempt to make it
+# obvious what&#39;s going on with DNS records.
+
+# Region and image name are passed in. See the variables.tf file
+
+# We need a cluster in which to put our service.
+resource &#34;aws_ecs_cluster&#34; &#34;app&#34; {
+  name = &#34;app&#34;
+}
+
+# Log groups hold logs from our app.
+resource &#34;aws_cloudwatch_log_group&#34; &#34;charlie_blog&#34; {
+  name = &#34;/ecs/charlie-blog&#34;
+}
+
+# The main service.
+resource &#34;aws_ecs_service&#34; &#34;charlie_blog&#34; {
+  name            = &#34;charlie-blog&#34;
+  task_definition = aws_ecs_task_definition.charlie_blog.arn
+  cluster         = aws_ecs_cluster.app.id
+  launch_type     = &#34;FARGATE&#34;
+
+  desired_count = 1
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.charlie_blog.arn
+    container_name   = &#34;charlie-blog&#34;
+    container_port   = &#34;80&#34;
+  }
+
+  network_configuration {
+    assign_public_ip = false
+
+    security_groups = [
+      aws_security_group.ecs_task.id,
+      aws_security_group.egress_alb.id,
+      aws_security_group.http.id,
+    ]
+
+    subnets = [
+      aws_subnet.private_d.id,
+      aws_subnet.private_e.id,
+    ]
+  }
+}
+
+# The task definition for our app.
+resource &#34;aws_ecs_task_definition&#34; &#34;charlie_blog&#34; {
+  family = &#34;charlie-blog&#34;
+
+  container_definitions = &lt;&lt;EOF
+  [
+    {
+      &#34;name&#34;: &#34;charlie-blog&#34;,
+      &#34;image&#34;: &#34;${var.charlie_blog_image}&#34;,
+      &#34;portMappings&#34;: [
+        {
+          &#34;containerPort&#34;: 80
+        }
+      ],
+      &#34;logConfiguration&#34;: {
+        &#34;logDriver&#34;: &#34;awslogs&#34;,
+        &#34;options&#34;: {
+          &#34;awslogs-region&#34;: &#34;${var.charlie_blog_aws_region}&#34;,
+          &#34;awslogs-group&#34;: &#34;/ecs/charlie-blog&#34;,
+          &#34;awslogs-stream-prefix&#34;: &#34;ecs&#34;
+        }
+      }
+    }
+  ]
+
+EOF
+
+  execution_role_arn = aws_iam_role.charlie_blog_task_execution_role.arn
+
+  # These are the minimum values for Fargate containers.
+  cpu                      = 256
+  memory                   = 512
+  requires_compatibilities = [&#34;FARGATE&#34;]
+
+  # This is required for Fargate containers (more on this later).
+  network_mode = &#34;awsvpc&#34;
+}
+</code></pre><pre tabindex="0"><code># alb.tf
+
+# Load balancer target group
+resource &#34;aws_lb_target_group&#34; &#34;charlie_blog&#34; {
+  name        = &#34;charlie-blog&#34;
+  port        = 80
+  protocol    = &#34;HTTP&#34;
+  target_type = &#34;ip&#34;
+  vpc_id      = aws_vpc.app_vpc.id
+
+  health_check {
+    enabled = true
+    path    = &#34;/health&#34;
+  }
+
+  depends_on = [aws_alb.charlie_blog]
+}
+
+# Load balancer
+resource &#34;aws_alb&#34; &#34;charlie_blog&#34; {
+  name               = &#34;charlie-blog-lb&#34;
+  internal           = false
+  load_balancer_type = &#34;application&#34;
+
+  subnets = [
+    aws_subnet.public_d.id,
+    aws_subnet.public_e.id,
+  ]
+
+  security_groups = [
+    aws_security_group.http.id,
+    aws_security_group.https.id,
+    aws_security_group.egress_alb.id,
+  ]
+
+  depends_on = [aws_internet_gateway.igw]
+}
+
+# Load balancer listener on port 80 redirects all traffic to 443
+resource &#34;aws_alb_listener&#34; &#34;charlie_blog_http&#34; {
+  load_balancer_arn = aws_alb.charlie_blog.arn
+  port              = &#34;80&#34;
+  protocol          = &#34;HTTP&#34;
+
+  default_action {
+    type = &#34;redirect&#34;
+
+    redirect {
+      port        = &#34;443&#34;
+      protocol    = &#34;HTTPS&#34;
+      status_code = &#34;HTTP_301&#34;
+    }
+  }
+}
+
+# Load balancer port 443 listener
+resource &#34;aws_alb_listener&#34; &#34;charlie_blog_https&#34; {
+  load_balancer_arn = aws_alb.charlie_blog.arn
+  port              = &#34;443&#34;
+  protocol          = &#34;HTTPS&#34;
+  certificate_arn   = aws_acm_certificate_validation.mcelfresh_info.certificate_arn
+
+  default_action {
+    type             = &#34;forward&#34;
+    target_group_arn = aws_lb_target_group.charlie_blog.arn
+  }
+}
+</code></pre><h4 id="summary">Summary</h4>
+<p>Most of this setup works as you would expect. We need DNS, an SSL cert, a load balancer, then something that runs our container(s). Fargate seems great &ndash; we&rsquo;ll have to see how it performs / how much it costs.</p>
+<p>The tricky parts:</p>
+<ul>
+<li>AWS Privatelink &ndash; setting up ECS / Fargate such that it can pull our image without requiring a NAT Gateway</li>
+<li>Getting our Amazon Certificate Manager (ACM) to work with our Route53 code, such that our SSL cert is created and verified programmatically</li>
+</ul>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Create Related Records in Postgres - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="Create Related Records in Postgres" />
+<meta property="og:description" content="in one query using a Common Table Expression (CTE)" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/create-multiple-postgres-records-one-query/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-03-02T11:30:41-08:00" />
+<meta property="article:modified_time" content="2024-03-02T11:30:41-08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Create Related Records in Postgres"/>
+<meta name="twitter:description" content="in one query using a Common Table Expression (CTE)"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Create Related Records in Postgres</h1>
+			<div class="meta">Posted at &mdash; Mar 2, 2024</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="start-with-dbmate">Start with Dbmate</h3>
+<p><a href="https://github.com/amacneil/dbmate">Dbmate</a> is a SQL database migration tool written in Go. It is the simplest, most usable migration tool I&rsquo;ve found, and I highly encourage you to consider using it in your project, regardless of your project&rsquo;s language.</p>
+<p>Here are a few Dbmate migrations you can use to create the tables we&rsquo;ll need for this post:</p>
+<pre tabindex="0"><code>&gt; dbmate new create_users_table
+</code></pre><pre tabindex="0"><code>-- migrate:up
+
+CREATE TABLE users (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    created_at timestamptz DEFAULT NOW(),
+updated_at timestamptz DEFAULT NOW()
+);
+
+CREATE INDEX idx_user__email ON users (email);
+
+-- migrate:down
+
+DROP TABLE users;
+</code></pre><pre tabindex="0"><code>&gt; dbmate new create_items_table
+</code></pre><pre tabindex="0"><code>-- migrate:up
+
+CREATE TABLE items (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT NOW(),
+    updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_name_uniq ON items (name);
+
+-- migrate:down
+
+DROP TABLE items;
+</code></pre><pre tabindex="0"><code>dbmate new create user_items_table
+</code></pre><pre tabindex="0"><code>-- migrate:up
+
+CREATE TABLE user_items (
+    user_id uuid NOT NULL REFERENCES users(id) DEFERRABLE,
+    item_id uuid NOT NULL REFERENCES items(id) DEFERRABLE,
+    created_at timestamptz NOT NULL DEFAULT NOW(),
+    updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_user_items__user_id_item_id_uniq ON user_items (user_id, item_id);
+
+-- migrate:down
+
+DROP TABLE user_items;
+</code></pre><h3 id="run-this-query">Run this query</h3>
+<p>Common Table Expressions (CTEs), in addition to providing a clean way to express SQL, provide control over the order in which commands are run, as well as the ability to wrap complex commands inside one transaction. Here, we create a <code>users</code> record, and an <code>items</code> record, then a <code>user_items</code> record, all inside one transaction:</p>
+<pre tabindex="0"><code>WITH u AS (
+    INSERT INTO users (email) VALUES (&#39;user@example.com&#39;) RETURNING id
+), i AS (
+    INSERT INTO items (name) VALUES (&#39;Widget 01&#39;) RETURNING id
+), u_and_i AS (
+    SELECT
+        u.id AS user_id, i.id AS item_id
+    FROM
+        u
+    JOIN
+        i ON 1=1
+)
+INSERT INTO
+    user_items (user_id, item_id)
+SELECT
+    user_id, item_id FROM u_and_i
+</code></pre>
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

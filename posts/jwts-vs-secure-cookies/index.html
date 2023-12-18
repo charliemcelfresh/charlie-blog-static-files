@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>User JWTs vs One Encrypted Secure Cookie - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="User JWTs vs One Encrypted Secure Cookie" />
+<meta property="og:description" content="JWTs Are (Usually) Not Stateless" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/jwts-vs-secure-cookies/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-26T11:05:54-08:00" />
+<meta property="article:modified_time" content="2023-12-26T11:05:54-08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="User JWTs vs One Encrypted Secure Cookie"/>
+<meta name="twitter:description" content="JWTs Are (Usually) Not Stateless"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">User JWTs vs One Encrypted Secure Cookie</h1>
+			<div class="meta">Posted at &mdash; Dec 26, 2023</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="overview">Overview</h3>
+<p><a href="https://en.wikipedia.org/wiki/JSON_Web_Token">JWTs</a> are used in a variety of contexts, but we&rsquo;re going to focus on JWTs and secure cookies, used in browsers, to store user information in the browser, and provide user authentication and authorization to server-side resources.</p>
+<p>In my experience, JWTs are often credited with providing security and performance they do not provide. They are called &ldquo;stateless&rdquo;, meaning that they store state on the client, and not on the server. However, most, or perhaps any, reasonable implementation requires that JWT state be maintained on the server as well, in order that JWTs may be invalidated.</p>
+<p>Morever, JWTs are often used to store <a href="https://en.wikipedia.org/wiki/Gathering_of_personally_identifiable_information#:~:text=(1)%20any%20information%20that%20can,as%20medical%2C%20educational%2C%20financial%20and">personally identifiable information (PII)</a> that they should not store. Such PII can be scooped up and used in a number of ways that aren&rsquo;t good for the user.</p>
+<h3 id="jwts-are-almost-always-not-stateless">JWTs Are (Almost Always) Not Stateless</h3>
+<p>JWTs are said to be &ldquo;stateless&rdquo;. The logic goes like this: Once a JWT is issued, it is valid until either 1) it expires, or 2) the key that checks its validity is invalidated. The state of any particular JWT does not need to be stored on the server, because, once the JWT is created, it carries its own authenticity and authorization. When the server sees a JWT, it can check it was correctly issued, and that all the data inside it is correct.</p>
+<p>JWTs typically keep state in the browser cookies, local storage, and / or session storage. A typical JWT might describe this state: &ldquo;This user has id 123, username &ldquo;Charlie&rdquo;, and is valid for one hour.&rdquo;</p>
+<p>JWTs are usually created with an expiration, and this expiration is often used to limit access to server side resources. By itself, this is provides no security at all.</p>
+<p>The only ways to invalidate a JWT that has not yet expired, are to 1) swap out a server&rsquo;s private key, which will invalidate all JWTs, usually not the best option, or 2) add particular JWTs to a blacklist. A blacklist requires a server side lookup, not only for blacklisted JWTs, but for all JWTs. Once we have a blacklist, our JWTs are no longer &ldquo;stateless&rdquo;.</p>
+<h3 id="jwts-are-often-used-to-store-pii">JWTs Are Often Used to Store PII</h3>
+<p>Cookies, local storage, and session storage are often used to store information between browser requests. Often, this data is stored inside JWTs. This data includes things like:</p>
+<ul>
+<li>user_id / session_id / other ids &ndash; the same ids that are stored in a database. These ids are often used so that the client may directly query server side resources that need them</li>
+<li>PII, like username, email address, shopping cart items, browsing history, etc, often used to prefill forms, or provide customization within or without valid sessions (&ldquo;Hello, Charlie!), thus precluding the need for a round-trip to the server</li>
+</ul>
+<p>Storage of database ids, in local storage, or in cookies, is of course not limited to JWTs. You&rsquo;ll find database ids littered throughout your local storage and cookies, for all kinds of websites. Database ids that could now, or anytime in the future, provide clues to hackers on how to access resources in your site, should never be stored in the browser.</p>
+<h3 id="one-secure-encrypted-cookie">One Secure, Encrypted Cookie</h3>
+<p>Once your &ldquo;stateless&rdquo; JWTs have been made stateful, by requiring a blacklist check, secure, encrypted cookies become a simpler and more powerful option. Secure, encrypted cookies are stateful &ndash; they store user state on the server. But JWTs + blacklists are also stateful, and require more machinery &ndash; signing / encryption + signature checks / decryption &ndash; than secure encrypted cookies do.</p>
+<p>A <a href="https://en.wikipedia.org/wiki/Secure_cookie">&ldquo;secure cookie&rdquo;</a> is one that will be sent to the browser, and back to the server, only over https. This takes care of encryption in transit.</p>
+<p>For encryption at rest, I prefer to 1) encrypt my cookies, and 2) store no unencrypted PII on the user&rsquo;s browser. Here is my preferred cookie implementation:</p>
+<ul>
+<li>Send only one cookie back and forth browser to server, a user_id + expiration timestamp. Bet to encrypt on a per-user basis, where each user has their own encryption key. Each user&rsquo;s encryption key can be replaced, without affecting other users&rsquo; keys</li>
+<li>We keep only one session per user in the database; old sessions are deleted (or soft deleted)</li>
+<li>The encrypted cookie contains a user_id that actually exists in the database, but because it is encrypted in the browser, the client cannot read it. The server receives the cookie, decrypts it, and looks up the user&rsquo;s session to see whether the timestamp is current. If it&rsquo;s not, the user must reauthenticate. Thus we use user_id + timestamp to authenticate, and user_id to authorize access to resources</li>
+<li>The expires_at in the cookie itself is meaningless, only the expired_at in the database has meaning</li>
+<li>Enforce sensible session_id expiration and deletion strategies, ie 10 minutes / 1 hour / etc. between requests, and deletion once / day</li>
+</ul>
+<p>Of course, there will usually be database ids in URIs, and this is often ok (products/1). But user_ids should never be readable in plain text, anywhere but on the server. And, although there will be lots of information stored in the browser page cache (browser history, PII, etc.), the page cache is not readable by javascript, is not hackable via cross-site scripting. Data is safer in browser caches than it is in local storage / cookies.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>Client-side JWTs that require blacklists (in my view, is all of them!) aren&rsquo;t &ldquo;stateless&rdquo;. Moreover &ndash; I think because the server can verify their contents have not been tampered with &ndash; somehow, this false sense of &ldquo;security&rdquo; gives rise to adding, in plain text, information, like user_ids, that JWTs should not contain.</p>
+<p>Secure, encrypted cookies have proven a better alternative for me, for web clients.</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Twirp -- Build Simple, High Performance Go HTTP Protobuf Services - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="Twirp -- Build Simple, High Performance Go HTTP Protobuf Services" />
+<meta property="og:description" content="Go, Twirp (with hooks), Postgres/sqlx, JWTs" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/charlie-go-part-1/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-11-28T11:18:40-08:00" />
+<meta property="article:modified_time" content="2023-11-28T11:18:40-08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Twirp -- Build Simple, High Performance Go HTTP Protobuf Services"/>
+<meta name="twitter:description" content="Go, Twirp (with hooks), Postgres/sqlx, JWTs"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Twirp -- Build Simple, High Performance Go HTTP Protobuf Services</h1>
+			<div class="meta">Posted at &mdash; Nov 28, 2023</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="overview">Overview</h3>
+<p><a href="https://github.com/twitchtv/twirp">Twirp</a> is an RPC / protobuf framework developed by <a href="https://www.twitch.tv">Twitch.tv</a>. It offers some very powerful features:</p>
+<ul>
+<li>JSON <em>or</em> protobuf responses, depending on the request Content-Type header (application/protobuf or application/json)</li>
+<li>Hooks sprinkled throughout the request / response lifecycle</li>
+<li>Interceptors, Twirp&rsquo;s middleware</li>
+<li>Auto-generated clients in in all popular languages (Go, Rust, Ruby, Node, Python, etc.)</li>
+<li>Built on top of Go&rsquo;s net/http package.</li>
+</ul>
+<h4 id="how-it-works">How it works</h4>
+<p>We&rsquo;re going to walk through the code in some detail, and there is a lot to absorb. But keep in mind that Twirp implementation is actually very simple:</p>
+<ul>
+<li>Make .proto files containing request / response messages and endpoint definitions</li>
+<li>Run Twirp&rsquo;s generator</li>
+<li>Implement hooks and/or interceptors</li>
+<li>Implement the methods listed in the generated code&rsquo;s interface</li>
+<li>Fire up your server</li>
+</ul>
+<p>Define your protobuf services in your .proto file</p>
+<p><a href="https://github.com/charliemcelfresh/charlie-go/blob/main/rpc/charlie-go/service.proto#L1">rpc/charlie_go.go</a></p>
+<pre tabindex="0"><code>syntax = &#34;proto3&#34;;
+
+package charlie_go;
+option go_package = &#34;rpc/charlie-go&#34;;
+
+// This &#34;service&#34; represents the endpoints, and all the related code, that
+// Twirp will generate
+
+service CharlieGo {
+  rpc CreateItem(CreateItemRequest) returns (None);
+  rpc GetItem(GetItemRequest) returns (Item);
+}
+
+// These messages represent the requests and responses Twirp&#39;s generator
+// will transform into Go structs
+
+message None {}
+
+message CreateItemRequest {
+  string name = 1; // required
+}
+
+message GetItemRequest {
+  string id = 1;
+}
+
+message Item {
+  string id = 1;
+  string name = 2;
+  string created_at = 3;
+  string updated_at = 4;
+}
+</code></pre><ul>
+<li>
+<p>Run Twirp&rsquo;s generator. See <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/Makefile#L3">here</a>. It generates our <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/rpc/charlie-go/service.twirp.go#L1">client and server</a>, along with some <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/rpc/charlie-go/service.pb.go#L1">utility functions</a>. We&rsquo;re going to focus on the server and client code. Included in it:</p>
+<ul>
+<li>The <code>NewCharlieGoServer</code> function that creates the HTTP handler we&rsquo;ll pass to our mux</li>
+<li>An interface we&rsquo;ll implement via our <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/internal/twirp_server/provider.go#L1">provider</a>. Our provider handles our business logic; it accepts a request struct, creates an item, and hands back a response which our handler will pass back to the client.</li>
+<li>Interceptor and hook method calls, that will allow us to hook into various points in the HTTP request / response lifecycle</li>
+<li>A Go protobuf client</li>
+</ul>
+</li>
+</ul>
+<p>Note that Twirp is also able to generate clients in JS, Ruby, Python, and a number of other languages. We&rsquo;re going to generate only the Go client.</p>
+<h4 id="code-crawl">Code Crawl</h4>
+<p>At a high level, Twirp&rsquo;s generated server code works just as you&rsquo;d expect from any HTTP framework, with a few slick features thrown in:</p>
+<ul>
+<li>It allows for only the POST HTTP method</li>
+<li>It requires that we implement only the business logic, which it buries inside all the needed HTTP machinery, thus allowing for surrounding our business logic with hooks and interceptors</li>
+<li>It exposes the required business logic as an interface we must implement</li>
+<li>It switches on request paths to fire off requests to the proper code paths</li>
+<li>It also switches on request header, providing different paths for <code>application/json</code> and <code>application/protobuf</code> requests/responses</li>
+</ul>
+<p>Let&rsquo;s crawl through the code, from the beginning to the end of the CreateItem request / response, and see how it works.</p>
+<p>Our <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/cmd/twirp_server.go#L26">Run()</a> function creates provider and handler instances, and starts our http server:</p>
+<pre tabindex="0"><code>func Run() {
+
+// The &#34;provider&#34; is our code&#39;s base object. It implements the interface
+// Twirp generated for us in rpc/charlie_go/twirp_server.go, as we&#39;ll
+// see below.
+
+  provider := twirp_server.NewProvider()
+
+// We can create as many twirp.ChainHooks objects as we want. Each can
+// implement any or all the hook functions that are sprinkled throughout
+// Twirp&#39;s generated code in twirp_server.go
+
+  chainHooks := twirp.ChainHooks(
+    provider.AuthHooks(),
+  )
+
+// We instantiate the http package&#39;s muxer:
+
+  mux := http.NewServeMux()
+
+// Here are the paths Twirp creates for our endpoints. Note below that
+// we are setting a PathPrefix api/v1; Without it, our paths would be
+// like twirp/charlie_go/CharlieGo instead of
+// api/v1/charlie_go/CharlieGo
+
+  // POST http(s)://&lt;host&gt;/api/v1/charlie_go/CharlieGo/CreateItem
+  // POST http(s)://&lt;host&gt;/api/v1/charlie_go/CharlieGo/GetItem
+
+// In Go&#39;s http package, any object that implements the http.Handler
+// interface, ie any object that as a ServeHTTP method with the right
+// signature, can be passed into a mux
+
+  handler := charlie_go.NewCharlieGoServer(provider,
+    twirp.WithServerPathPrefix(&#34;/api/v1&#34;), chainHooks)
+
+  mux.Handle(
+    handler.PathPrefix(), twirp_server.AddJwtTokenToContext(
+      handler,
+    ),
+  )
+// Start our server
+	http.ListenAndServe(&#34;:8080&#34;, mux)
+}
+</code></pre><p>Notice the <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/cmd/twirp_server.go#L26">AddJwtTokenToContext middleware</a>. We require a valid JWT in the Authorization header for requests to CreateItem:</p>
+<pre tabindex="0"><code>// This function adds whatever is in the Authorization header
+// to the request context.
+
+func AddJwtTokenToContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			auth := r.Header.Get(Authorization)
+			if auth != &#34;&#34; {
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, contextJWT, auth)
+				r = r.WithContext(ctx)
+			}
+			next.ServeHTTP(w, r)
+		},
+	)
+}
+</code></pre><p>Once the request makes it through the middleware, it passes to our Twirp server&rsquo;s ServeHTTP method:</p>
+<p><a href="https://github.com/charliemcelfresh/charlie-go/blob/main/rpc/charlie-go/service.twirp.go#L383">rpc/charlie_go/twirp.server.go</a></p>
+<pre tabindex="0"><code>func (s *charlieGoServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+...
+
+// callRequestReceived is the first Twirp hook that gets called, near the
+// top of the ServeHTTP function:
+
+  ctx, err = callRequestReceived(ctx, s.hooks)
+</code></pre><p>Twirp has a concept of <code>ChainHooks</code>, collections of <code>ServerHooks</code> which Twirp will call in the order they are passed into our <code>NewCharlieGoServer</code> handler constructor. Each ServerHook can implement any or all of Twirp&rsquo;s five ServerHook methods:</p>
+<pre tabindex="0"><code>// ServerHooks is a container for callbacks that can instrument a
+// Twirp-generated server. These callbacks all accept a context and return a
+// context. They can use this to add to the request context as it threads
+// through the system, appending values or deadlines to it.
+//
+// The RequestReceived and RequestRouted hooks are special: they can return
+// errors. If they return a non-nil error, handling for that request will be
+// stopped at that point. The Error hook will be triggered, and the error will
+// be sent to the client. This can be used for stuff like auth checks before
+// deserializing a request.
+//
+// The RequestReceived hook is always called first, and it is called for every
+// request that the Twirp server handles. The last hook to be called in a
+// request&#39;s lifecycle is always ResponseSent, even in the case of an error.
+//
+// Details on the timing of each hook are documented as comments on the fields
+// of the ServerHooks type.
+type ServerHooks struct {
+	// RequestReceived is called as soon as a request enters the Twirp
+	// server at the earliest available moment.
+	RequestReceived func(context.Context) (context.Context, error)
+
+	// RequestRouted is called when a request has been routed to a
+	// particular method of the Twirp server.
+	RequestRouted func(context.Context) (context.Context, error)
+
+	// ResponsePrepared is called when a request has been handled and a
+	// response is ready to be sent to the client.
+	ResponsePrepared func(context.Context) context.Context
+
+	// ResponseSent is called when all bytes of a response (including an error
+	// response) have been written. Because the ResponseSent hook is terminal, it
+	// does not return a context.
+	ResponseSent func(context.Context)
+
+	// Error hook is called when an error occurs while handling a request. The
+	// Error is passed as argument to the hook.
+	Error func(context.Context, Error) context.Context
+}
+</code></pre><p>(see <a href="https://github.com/twitchtv/twirp/blob/main/server_options.go#L96">here</a>)</p>
+<p>We&rsquo;ve created only one ServerHook (see <a href="https://github.com/charliemcelfresh/charlie-go/blob/main/internal/twirp_server/hooks.go#L17">here</a>) for Auth, which checks whether each request has a valid JWT. It implements only the <code>RequestReceived</code> method.</p>
+<p>All the hook functions are called in the same way. They iterate over all ServerHooks, and call the hook function if it&rsquo;s implemented. The way this is implemented is very clever. Recall that in <code>cmd/twirp_server.go</code>, we create <code>ChainHooks</code>, and pass them into our handler:</p>
+<pre tabindex="0"><code>chainHooks := twirp.ChainHooks(
+	provider.AuthHooks(),
+)
+</code></pre><p>The below code shows Twirp&rsquo;s code iterates over each hook, and calls the <code>RequestReceived</code> method on each, if it exists:</p>
+<pre tabindex="0"><code>// ChainHooks creates a new *ServerHooks which chains the callbacks in
+// each of the constituent hooks passed in. Each hook function will be
+// called in the order of the ServerHooks values passed in.
+//
+// For the erroring hooks, RequestReceived and RequestRouted, any returned
+// errors prevent processing by later hooks.
+func ChainHooks(hooks ...*ServerHooks) *ServerHooks {
+	if len(hooks) == 0 {
+		return nil
+	}
+	if len(hooks) == 1 {
+		return hooks[0]
+	}
+	return &amp;ServerHooks{
+		RequestReceived: func(ctx context.Context) (context.Context, error) {
+			var err error
+
+      // iterate over each ServerHook and call each
+
+			for _, h := range hooks {
+				if h != nil &amp;&amp; h.RequestReceived != nil {
+					ctx, err = h.RequestReceived(ctx)
+					if err != nil {
+						return ctx, err
+					}
+				}
+			}
+			return ctx, nil
+		},
+		RequestRouted: func(ctx context.Context) (context.Context, error) {
+			var err error
+			for _, h := range hooks {
+				if h != nil &amp;&amp; h.RequestRouted != nil {
+					ctx, err = h.RequestRouted(ctx)
+					if err != nil {
+						return ctx, err
+					}
+				}
+			}
+			return ctx, nil
+		},
+		ResponsePrepared: func(ctx context.Context) context.Context {
+			for _, h := range hooks {
+				if h != nil &amp;&amp; h.ResponsePrepared != nil {
+					ctx = h.ResponsePrepared(ctx)
+				}
+			}
+			return ctx
+		},
+		ResponseSent: func(ctx context.Context) {
+			for _, h := range hooks {
+				if h != nil &amp;&amp; h.ResponseSent != nil {
+					h.ResponseSent(ctx)
+				}
+			}
+		},
+		Error: func(ctx context.Context, twerr Error) context.Context {
+			for _, h := range hooks {
+				if h != nil &amp;&amp; h.Error != nil {
+					ctx = h.Error(ctx, twerr)
+				}
+			}
+			return ctx
+		},
+	}
+}
+</code></pre><p><a href="https://github.com/charliemcelfresh/charlie-go/blob/main/rpc/charlie-go/service.twirp.go#L396">rpc/charlie_go/twirp.server.go</a> cont&rsquo;d</p>
+<pre tabindex="0"><code>// The code switches on each implemented RPC method, which matches 1:1 with the rightmost
+// part of the request URL:
+
+  switch method {
+  case &#34;CreateItem&#34;:
+      s.serveCreateItem(ctx, resp, req)
+...
+
+func (s *charlieGoServer) serveCreateItem(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+...
+// Switch based on whether the ContentType == application/json or application/protobuf:
+
+  switch strings.TrimSpace(strings.ToLower(header[:i])) {
+  case &#34;application/json&#34;:
+    s.serveCreateItemJSON(ctx, resp, req)
+  case &#34;application/protobuf&#34;:
+    s.serveCreateItemProtobuf(ctx, resp, req)
+...
+</code></pre><p><code>serveCreateItemProtobuf</code> and <code>serveCreateItemJSON</code> are nearly identical. We&rsquo;ll look at <code>serveCreateItemProtobuf</code>. Here is where the remaining hooks methods are called, and where the response is returned:</p>
+<pre tabindex="0"><code>func (s *charlieGoServer) serveCreateItemProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, &#34;CreateItem&#34;)
+
+// callRequestRouted hook function
+
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, &#34;failed to read request body&#34;, err)
+		return
+	}
+	reqContent := new(CreateItemRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError(&#34;the protobuf request could not be decoded&#34;))
+		return
+	}
+
+  // Twirp calls our CreateItem function a &#34;handler&#34;, which frankly is a little misleading
+
+  handler := s.CharlieGo.CreateItem
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *CreateItemRequest) (*None, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*CreateItemRequest)
+					if !ok {
+						return nil, twirp.InternalError(&#34;failed type assertion req.(*CreateItemRequest) when calling interceptor&#34;)
+					}
+					return s.CharlieGo.CreateItem(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*None)
+				if !ok {
+					return nil, twirp.InternalError(&#34;failed type assertion resp.(*None) when calling interceptor&#34;)
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *None
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+
+// Here is where our CreateItem function gets called ...
+
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+
+// ... and here is where our response, , or an error, is returned
+
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError(&#34;received a nil *None and nil error while calling CreateItem. nil responses are not supported&#34;))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, &#34;failed to marshal proto response&#34;))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set(&#34;Content-Type&#34;, &#34;application/protobuf&#34;)
+	resp.Header().Set(&#34;Content-Length&#34;, strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf(&#34;failed to write response, %d of %d bytes written: %s&#34;, n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+</code></pre><h4 id="summary">Summary</h4>
+<p>Twirp allows for creating highly scalable protobuf / JSON services, with built-in powerful features. At heart, it bears little difference from any Go HTTP server you&rsquo;d write yourself, or any of the frameworks out there.</p>
+<p>Once you have it set up in your project, the 1-2-3 of 1) creating new .proto request / response messages and services, 2) generating code, and 3) implementing business logic, is quite simple and fast.</p>
+<p>In addition, there are terrific insights in Twirp&rsquo;s code, including the code it generates for us, into proper Go idioms. I hope this blog post inspires you to create a Twirp service, generate some code, and do an even more detailed crawl through it than we&rsquo;ve done together.</p>
+<h4 id="addendum----run-the-charlie-go-app">Addendum &ndash; Run the charlie-go app</h4>
+<p>We use <a href="https://github.com/spf13/cobra">Cobra</a>, a Go CLI utility that allows us to create one binary, but run different parts of it, depending on what flags we pass to our binary.</p>
+<p>Note below, that we&rsquo;ll generate one binary, and we&rsquo;ll run our server, JWT generator, and db seeds, from that one binary, by passing flags to it.</p>
+<ul>
+<li>Copy <code>.env.sample</code> to <code>.env</code>
+<ul>
+<li>My local settings are in there, so you get a concrete idea of what yours should look like, but you&rsquo;ll have to replace my settings with yours</li>
+</ul>
+</li>
+<li>Pull the <code>charlie-go</code> code: <code>git clone git@github.com:charliemcelfresh/charlie-go.git</code></li>
+<li>Install and run Postgres locally, and set your local <code>DATABASE_URL</code> in <code>.env</code></li>
+<li><a href="https://github.com/amacneil/dbmate">Get dbmate</a> and Create your database and run migrations: <code>dbmate up</code></li>
+<li>Run seeds: <code>go run main.go seed_database</code> <em>or</em> <code>go build &amp;&amp; ./go-by-charlie seed_database</code></li>
+<li>Look in the database, and make sure you have one record each in the users, items, and user_items table</li>
+<li>Run our Twirp server: <code>go run main.go twirp-server</code> <em>or</em> <code>go build &amp;&amp; ./go-by-charlie twirp_server</code></li>
+<li>Generate JWTs:
+<ul>
+<li>Generate a keypair, set their file permissions, and update your .env:
+<ul>
+<li><code>ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key &amp;&amp; chmod 600 jwtRS256.key</code></li>
+<li>openssl <code>rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub &amp;&amp; chmod 644 jwtRS256.key.pub</code></li>
+<li>set <code>JWT_PRIVATE_KEY</code> and <code>JWT_PUBLIC_KEY</code> in your .env file</li>
+</ul>
+</li>
+<li>Generate a user JWT:
+<ul>
+<li>Grab a user&rsquo;s id from the users table</li>
+<li><code>go run main.go generate_jwt 10000h &lt;users.id&gt;</code> <em>or</em> <code>go build &amp;&amp; ./go-by-charlie generate_jwt 10000h &lt;users.id&gt;</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Now you should be able to paste your token in curl requests:</p>
+<ul>
+<li>
+<p>Create an item:
+`curl &ndash;location &lsquo;http://localhost:8080/twirp/charlie_go.CharlieGo/CreateItem&rsquo; <br>
+&ndash;header &lsquo;Content-Type: application/json&rsquo; <br>
+&ndash;header &lsquo;Authorization: Bearer <!-- raw HTML omitted -->&rsquo; <br>
+&ndash;data &lsquo;{
+&ldquo;name&rdquo;: &ldquo;Widget 02&rdquo;
+}&rsquo;</p>
+</li>
+<li>
+<p>Get an item:</p>
+</li>
+</ul>
+<p>curl &ndash;location &lsquo;http://localhost:8080/twirp/charlie_go.CharlieGo/GetItem&rsquo; <br>
+&ndash;header &lsquo;Content-Type: application/json&rsquo; <br>
+&ndash;header &lsquo;Authorization: Bearer <!-- raw HTML omitted -->&rsquo; <br>
+&ndash;data &lsquo;{
+&ldquo;id&rdquo;: &ldquo;&lt;items.id in your database connected to the user in the above JWT&gt;&rdquo;
+}&rsquo;</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

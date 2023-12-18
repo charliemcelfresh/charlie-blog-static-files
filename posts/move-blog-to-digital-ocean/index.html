@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Move My Blog Hosting - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="Move My Blog Hosting" />
+<meta property="og:description" content="to DigitalOcean App Platform" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/move-blog-to-digital-ocean/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-18T12:26:51-08:00" />
+<meta property="article:modified_time" content="2023-12-18T12:26:51-08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Move My Blog Hosting"/>
+<meta name="twitter:description" content="to DigitalOcean App Platform"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Move My Blog Hosting</h1>
+			<div class="meta">Posted at &mdash; Dec 18, 2023</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="move-my-blog-hosting-to-digitalocean-app-platform">Move My Blog Hosting to DigitalOcean App Platform</h3>
+<p><a href="https://docs.digitalocean.com/products/app-platform/">Digital Ocean App Platform</a> is a Platform-as-a-Service (PaaS) offering that allows publishing code directly to DigitalOcean servers, without managing any infrastructure.</p>
+<p>I created a <a href="https://github.com/charliemcelfresh/charlie-blog-static-files">Github repo</a> that contains my site&rsquo;s static files, generated from my Hugo static site generator, and I followed <a href="https://www.digitalocean.com/community/tutorials/how-to-deploy-a-static-site-from-github-with-digitalocean-app-platform-quickstart">this guide</a> to automatically deploy to Digital Ocean&rsquo;s <a href="https://www.digitalocean.com/pricing/app-platform#">free tier for static sites</a> each time I push to my repo&rsquo;s main branch.</p>
+<p>It seems DigitalOcean is essentially doing the same thing I did with Fargate; putting my files into container(s), and pushing them into a VM, or, more likely, some serverless setup, with DNS and certs all handled.</p>
+<h4 id="fargate-costs">Fargate Costs</h4>
+<p>Granted, Fargate wasn&rsquo;t the right technology fit for my static website. I <a href="https://www.mcelfresh.info/posts/hugo-aws-part-1/">deployed my site to Fargate</a> just to check it out, and also so I could build all the required components with Terraform.</p>
+<p>AWS&rsquo;s premise is that if I jump through its many hoops, and implement its oft complicated and poorly documented tooling and infra, it will tuck my technology into whatever corner of its vast enterprise that best suits its cost structure.</p>
+<p>Sure, AWS has options that are cheaper than Fargate, for a little static site like mine. And, it&rsquo;s not surprising that building a static site in Fargate turned out to be a bit of a boondoggle. But $50 / month, when I do all the work? I&rsquo;m left with the same sense I&rsquo;ve always had about AWS: What&rsquo;s good for AWS is not necessarily good for the rest of us.</p>
+<p>Presumably, at some (traffic level) * (price point), Fargate is a good option for deploying a set of high traffic / low management services, but these hourly costs for VPCs and ECS vCPUs, even at pennies or fractions of pennies per hour, strike me as comical:</p>
+<p>Projected cost for my static site on Fargate is around $50 / month:</p>
+<p><img src="images/big-bill.png" alt="Projected monthly bill" title="Projected monthly bill"></p>
+<p>This is due to $0.01 / hour costs for VPCs, and lower, but still fixed, hourly costs for vCPU for ECS:</p>
+<p><img src="images/big-bill-why.png" alt="VPC costs" title="VPC costs"></p>
+<p>At some point, I plan to move my blog over to <a href="https://cloud.google.com/run">Google Cloud Run</a>, and also try <a href="https://cloud.google.com/api-gateway">Google API Gateway</a>, just to figure out how it works. I took advantage of a Google program that issued me $300 in Google Cloud credits, so stay tuned!</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

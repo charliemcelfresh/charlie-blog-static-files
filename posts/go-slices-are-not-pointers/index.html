@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Go Slices Are Not Pointers - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="Go Slices Are Not Pointers" />
+<meta property="og:description" content="But Go maps are!" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/go-slices-are-not-pointers/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-15T12:51:36-08:00" />
+<meta property="article:modified_time" content="2023-12-15T12:51:36-08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go Slices Are Not Pointers"/>
+<meta name="twitter:description" content="But Go maps are!"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Go Slices Are Not Pointers</h1>
+			<div class="meta">Posted at &mdash; Dec 15, 2023</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="what-is-a-go-slice">What is a Go Slice?</h3>
+<p>A Go slice is a <a href="https://go.dev/blog/slices-intro">descriptor of an array segment</a>, with three fields:</p>
+<ul>
+<li>A pointer to an element of its underlying array</li>
+<li>The slice&rsquo;s length</li>
+<li>The slice&rsquo;s capacity</li>
+</ul>
+<p>I think part of the misconception that &ldquo;slices are pointers&rdquo; arises from the fact that a slice contains a pointer to a value in its underlying array.</p>
+<p>Here are two examples where we need slice pointers.</p>
+<h4 id="use-a-type-based-on-a-slice-as-a-pointer-receiver">Use a Type, Based on a Slice, as a Pointer Receiver</h4>
+<p>One common idiom is to use a type, based on a slice, as a method receiver, as with a Heap. As with any receiver whose underlying value is modified as our program runs, we&rsquo;ll use pointer receivers in our <code>Push()</code> and <code>Pop()</code> methods:</p>
+<pre tabindex="0"><code>type intHeap []int
+
+func (h intHeap) Len() int {
+  return len(h)
+}
+func (h intHeap) Less(i, j int) bool {
+  return h[i] &lt; h[j]
+}
+func (h intHeap) Swap(i, j int) {
+  h[i], h[j] = h[j], h[i]
+}
+func (h *intHeap) Push(a any) {
+  *h = append(*h, a.(int))
+}
+func (h *intHeap) Pop() any {
+  old := *h         // grab h&#39;s value, assign it to old
+  n := len(old)
+  x := old[n-1]
+  *h = old[:n-1]    // assign truncated old to *h
+  return x
+}
+
+func main() {
+// create, initialize, use your heap here
+  ...
+</code></pre><h4 id="update-a-callers-slice">Update a Caller&rsquo;s Slice</h4>
+<p>Here&rsquo;s another example. This function performs inorder traversal of a binary tree. If we implement an inline <code>inOrder</code> function, we can pass our <code>output</code> tracking slice as a value, because our <code>output</code> slice is in the scope of our <code>inOrder</code> function:</p>
+<pre tabindex="0"><code>func inorderTraversal(root *TreeNode) []int {
+  output := []int{}
+  var inOrder func(t *TreeNode)
+  inOrder = func(t *TreeNode) {
+    if t == nil {
+      return
+    }
+    inOrder(t.Left)
+    output = append(output, t.Val)
+    inOrder(t.Right)
+  }
+  inOrder(root)
+  return output
+}
+</code></pre><pre tabindex="0"><code>n := &amp;TreeNode{Val: 1}
+n.Right = &amp;TreeNode{Val: 2}
+n.Right.Left = &amp;TreeNode{Val: 3}
+
+    1
+  /   \
+2       3
+
+fmt.Println(inOrderTraversal(n))
+
+&gt; [2 1 3]
+</code></pre><p>Now, let&rsquo;s move our <code>inOrder</code> function into a named function:</p>
+<pre tabindex="0"><code>func inorderTraversal(root *TreeNode) []int {
+  output := []int{}
+  inOrder(output, root)
+  return output
+}
+
+func inOrder(output []int, t *TreeNode) {
+  if t == nil {
+    return
+  }
+  inOrder(output, t.Left)
+  output = append(output, t.Val)
+  inOrder(output, t.Right)
+}
+
+fmt.Println(inOrderTraversal(n))
+
+&gt; [] // should be [2 1 3]
+</code></pre><p>Go passes function params by value. In the above code, a copy of <code>output</code> is passed to our <code>inOrder</code> function. If &ldquo;slices are pointers&rdquo;, <code>output</code> should be filled with the right values. But it&rsquo;s not.</p>
+<p>We make our code work by passing a pointer to our <code>output</code> <code>[]int</code> slice into our <code>inOrder</code> function:</p>
+<pre tabindex="0"><code>func inorderTraversal(root *TreeNode) []int {
+  output := []int{}
+  inOrder(&amp;output, root) // pass &amp;output
+  return output
+}
+
+func inOrder(output *[]int, t *TreeNode) {
+  if t == nil {
+    return
+  }
+  inOrder(output, t.Left)
+  *output = append(*output, t.Val)
+  inOrder(output, t.Right)
+}
+
+fmt.Println(inOrderTraversal(n))
+
+&gt; [2 1 3]
+</code></pre><h2 id="go-maps-_are_-pointers">Go Maps <em>are</em> Pointers</h2>
+<p>By contrast, Go maps <em>are</em> pointers. In the below code, the caller passes a map to a named function, and the value of the map changes:</p>
+<pre tabindex="0"><code>func main() {
+  m := map[int]int{
+    1: 1,
+    2: 2,
+  }
+
+  fmt.Printf(&#34;before: %+v\n&#34;, m)
+
+  increment(m)
+
+  fmt.Printf(&#34; after: %+v\n&#34;, m)
+}
+
+func increment(m map[int]int) {
+  for k := range m {
+    m[k]++
+  }
+}
+
+&gt; before: map[1:1 2:2]
+&gt;  after: map[1:2 2:3]
+</code></pre><h3 id="common-slice-bugs">Common Slice Bugs</h3>
+<h4 id="amending-a-slice-during-our-program-execution">Amending a Slice During our Program Execution</h4>
+<p>Here, we&rsquo;re appending an <code>[]int</code> slice to our <code>[][]int</code> output. Because our <code>[]int</code> slice is updated during the lifetime of our program, the output might not be what we expect:</p>
+<pre tabindex="0"><code>
+func main() {
+  res := combinationSum([]int{2, 3, 6, 7}, 7)
+  fmt.Println(res)
+}
+
+func combinationSum(candidates []int, target int) [][]int {
+  output := [][]int{}
+
+  bt(&amp;output, []int{}, candidates, 0, target)
+  return output
+}
+
+func bt(output *[][]int, curr, candidates []int, idx, target int) {
+  if idx &gt; len(candidates) || target &lt; 0 {
+    return
+  }
+
+  if target == 0 {
+    fmt.Println(curr)
+    *output = append(*output, curr)
+    return
+  }
+
+  for i := idx; i &lt; len(candidates); i++ {
+    curr = append(curr, candidates[i])
+    bt(output, curr, candidates, i, target-candidates[i])
+    curr = curr[:len(curr)-1]
+  }
+  return
+}
+</code></pre><pre tabindex="0"><code>// we print out the correct results from iside our `bt` function ...
+&gt; [2 2 3]
+&gt; [7]
+</code></pre><pre tabindex="0"><code>// but our output is wrong:
+&gt; [[2 2 7] [7]]
+</code></pre><p>This is because we&rsquo;re pushing our <code>curr</code> slice onto our <code>output</code> slice, then we&rsquo;re changing the value of <code>curr's</code> underlying array.</p>
+<p>We can fix this using <code>copy</code>:</p>
+<pre tabindex="0"><code>func bt(output *[][]int, curr, candidates []int, idx, target int) {
+  if idx &gt; len(candidates) || target &lt; 0 {
+    return
+  }
+
+  if target == 0 {
+    fmt.Println(curr)
+    cp := make([]int, len(curr))
+    copy(cp, curr)
+    *output = append(*output, cp) // push cp onto output
+    return
+  }
+
+  for i := idx; i &lt; len(candidates); i++ {
+    curr = append(curr, candidates[i])
+    bt(output, curr, candidates, i, target-candidates[i])
+    curr = curr[:len(curr)-1]
+  }
+  return
+}
+</code></pre><pre tabindex="0"><code>&gt; [2 2 3]
+&gt; [7]
+&gt; [[2 2 3] [7]] // output matches what we print from inside our `bt` function
+</code></pre><h4 id="in-a-slice-of-slices-each-collection-member-points-to-an-individual-array">In a Slice of Slices, Each Collection Member Points to an Individual Array</h4>
+<p>Where we copy a slice of slices, we&rsquo;re copying only the pointer to the underlying array of slices; we&rsquo;re not copying each member slice.</p>
+<p>Let&rsquo;s make a 2d 3 x 2 slice:</p>
+<pre tabindex="0"><code>2dSlice := make([][]int, 3)
+</code></pre><p>So far, we are creating a slice that points to an underlying array of length 3, of nil slices.</p>
+<pre tabindex="0"><code>for i := range 2dSlice {
+  curr := make([]int, 2)
+  2dSlice = append(2dSlice, curr)
+}
+</code></pre><p>Now we have a slice that points to an underlying array of length 3, of <code>[]int</code> slices, each of length 2. If we copy our <code>2dSlice</code> into a new slice, the new slice will contain slices that point to the same arrays as <code>2dSlice</code>&rsquo;s. This can lead to subtle bugs that might go unnoticed for some time, depending on how functions get called over time.</p>
+<p>Since this code is long, I&rsquo;ve included the fix in commented-out code in the <code>Rotate2d</code> function:</p>
+<pre tabindex="0"><code>func main() {
+  inputSl := [][]int{
+    {1,2,3},
+    {4,5,6},
+  }
+  fmt.Println(&#34;---- orig&#34;)
+  Print2dSl(inputSl)
+  fmt.Println(&#34;---- transposed&#34;)
+  transposed := Transpose2d(inputSl)
+  Print2dSl(transposed)
+  fmt.Println(&#34;---- twoSeventy&#34;)
+  twoSeventy := Rotate2d(270, inputSl)
+  Print2dSl(twoSeventy)
+  fmt.Println(&#34;---- ninety&#34;)
+  ninety := Rotate2d(90, inputSl)
+  Print2dSl(ninety)
+  oneEighty := Rotate2d(180, inputSl)
+  fmt.Println(&#34;---- oneEighty&#34;)
+  Print2dSl(oneEighty)
+  twoSeventy = Rotate2d(270, inputSl)
+  fmt.Println(&#34;---- twoSeventy&#34;)
+  Print2dSl(twoSeventy)
+}
+
+func Rotate2d[T any](deg int, inputSl [][]T) [][]T {
+  var transpose func(sl [][]T) [][]T
+  transpose = func(sl [][]T) [][]T {
+    output := make([][]T, len(sl[0]))
+    for i := range output {
+      output[i] = make([]T, len(sl))
+    }
+    for i := 0; i &lt; len(sl); i++ {
+      for j := 0; j &lt; len(sl[0]); j++ {
+        output[j][i] = sl[i][j]
+      }
+    }
+    return output
+  }
+
+  var swapColumns func(sl [][]T)
+  swapColumns = func(sl [][]T) {
+    for row := 0; row &lt; len(sl); row++ {
+      for l, r := 0, len(sl[0])-1; l &lt; r; l, r = l+1, r-1 {
+        sl[row][l], sl[row][r] = sl[row][r], sl[row][l]
+      }
+    }
+  }
+  var swapRows func(sl [][]T)
+  swapRows = func(sl [][]T) {
+    for top, bottom := 0, len(sl)-1; top &lt; bottom; top, bottom = top+1, bottom-1 {
+      sl[top], sl[bottom] = sl[bottom], sl[top]
+    }
+  }
+
+  if deg == 0 {
+    return inputSl
+  } else if deg == 90 {
+    output := transpose(inputSl)
+    swapColumns(output)
+    return output
+  } else if deg == 180 {
+    output := make([][]T, len(inputSl))
+    for i := range output {
+      output[i] = make([]T, len(inputSl[0]))
+    }
+    //for i := 0; i &lt; len(inputSl); i++ {
+    //  copy(output[i], inputSl[i])
+    //}
+    copy(output, inputSl) // wrong!!
+    swapRows(output)
+    swapColumns(output)
+    return output
+  } else if deg == 270 {
+    output := transpose(inputSl)
+    swapRows(output)
+    return output
+  } else {
+    panic(&#34;deg must be 0, 90, 180 or 270&#34;)
+  }
+}
+
+func Transpose2d[T any](sl [][]T) [][]T {
+  output := make([][]T, len(sl[0]))
+  for i := range output {
+    output[i] = make([]T, len(sl))
+  }
+  for i := 0; i &lt; len(sl); i++ {
+    for j := 0; j &lt; len(sl[0]); j++ {
+      output[j][i] = sl[i][j]
+    }
+  }
+  return output
+}
+
+func Print2dSl[T any](sl [][]T) {
+  for _, ln := range sl {
+    fmt.Println(ln)
+  }
+}
+</code></pre><p>Note that the first time we call this code, twoSeventy returns the correct answer, but the second time, it does not.</p>
+<pre tabindex="0"><code>&gt; ---- orig
+&gt; [1 2 3]
+&gt; [4 5 6]
+&gt; ---- transposed
+&gt; [1 4]
+&gt; [2 5]
+&gt; [3 6]
+&gt; ---- twoSeventy
+&gt; [3 6]
+&gt; [2 5]
+&gt; [1 4]
+&gt; ---- ninety
+&gt; [4 1]
+&gt; [5 2]
+&gt; [6 3]
+&gt; ---- oneEighty
+&gt; [6 5 4]
+&gt; [3 2 1]
+&gt; ---- twoSeventy
+&gt; [1 4]
+&gt; [2 5]
+&gt; [3 6]
+</code></pre><p>This may not seem intuitive. How can the state of our function survive individual calls to it? This is because when we call <code>Rotate2d(180, inputSl)</code>, we are copying our <code>inputSl</code> into a new <code>output</code> slice whose members remain pointers to the same underlying arrays as <code>inputSl</code>.</p>
+<p>I imagine this bug is fairly prevalent in the wild, because, as we see, if <code>Rotate2d(270, inputSl)</code> is called independently of <code>Rotate2d(180, inputSl)</code>, it won&rsquo;t create problems. But as called above, it will.</p>
+<p>As you can see in the commented-out code, the fix is to copy each slice inside <code>inputSl</code> to each row of <code>output</code>.</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

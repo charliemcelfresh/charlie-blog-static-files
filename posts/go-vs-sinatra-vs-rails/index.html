@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Go vs Sinatra vs Rails Part 1 - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="Go vs Sinatra vs Rails Part 1" />
+<meta property="og:description" content="Compare performance of a simple JSON api" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.mcelfresh.info/posts/go-vs-sinatra-vs-rails/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-03-15T16:10:46-07:00" />
+<meta property="article:modified_time" content="2024-03-15T16:10:46-07:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go vs Sinatra vs Rails Part 1"/>
+<meta name="twitter:description" content="Compare performance of a simple JSON api"/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Go vs Sinatra vs Rails Part 1</h1>
+			<div class="meta">Posted at &mdash; Mar 15, 2024</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="introduction">Introduction</h3>
+<p>Here are three JSON APIs which offer the same functionality &ndash; an <code>/api/v1/items</code> endpoint that retrieves 10 <code>items</code> in JSON format.</p>
+<h3 id="the-database">The Database</h3>
+<p>The APIs are backed by a MySQL database <code>items_api_development</code> that has three tables. The database, tables, and data are created from within <a href="https://github.com/charliemcelfresh/rails-items-api">rails-items-api</a>, as noted below.</p>
+<p>Here is the schema:</p>
+<p><em>users</em></p>
+<pre tabindex="0"><code>+------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| id         | bigint       | NO   | PRI | NULL    | auto_increment |
+| email      | varchar(255) | NO   | UNI | NULL    |                |
+| created_at | datetime(6)  | NO   |     | NULL    |                |
+| updated_at | datetime(6)  | NO   |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+</code></pre><p><em>user_items</em></p>
+<pre tabindex="0"><code>+------------+-------------+------+-----+---------+----------------+
+| Field      | Type        | Null | Key | Default | Extra          |
++------------+-------------+------+-----+---------+----------------+
+| id         | bigint      | NO   | PRI | NULL    | auto_increment |
+| user_id    | bigint      | YES  | MUL | NULL    |                |
+| item_id    | bigint      | YES  | MUL | NULL    |                |
+| created_at | datetime(6) | NO   |     | NULL    |                |
+| updated_at | datetime(6) | NO   |     | NULL    |                |
++------------+-------------+------+-----+---------+----------------+
+</code></pre><p><em>items</em></p>
+<pre tabindex="0"><code>+------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| id         | bigint       | NO   | PRI | NULL    | auto_increment |
+| name       | varchar(255) | NO   | UNI | NULL    |                |
+| created_at | datetime(6)  | NO   |     | NULL    |                |
+| updated_at | datetime(6)  | NO   |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+</code></pre><ul>
+<li><code>user_id</code> and <code>item_id</code> in the <code>user_items</code> table are foreign keys to <code>users.id</code> and <code>items.id</code> respectively</li>
+<li>There is a non-unique index on each foreign key</li>
+<li>There is a unique index on <code>users.email</code>, and one on <code>items.name</code></li>
+</ul>
+<h3 id="the-applications">The Applications</h3>
+<ul>
+<li><a href="https://github.com/charliemcelfresh/rails-items-api">rails-items-api</a>, the popular <a href="https://github.com/rack/rack">rack</a>-based Ruby framework
+<ul>
+<li><a href="https://rubyonrails.org">Rails 7.x</a></li>
+<li><a href="https://github.com/ohler55/oj">Oj Optimized JSON Gem</a></li>
+<li><a href="https://guides.rubyonrails.org/active_record_basics.html">ActiveRecord ORM</a>, the default ORM for Rails</li>
+<li><a href="https://puma.io">Puma</a> application server</li>
+</ul>
+</li>
+<li><a href="https://github.com/charliemcelfresh/sinatra-items-api">sinatra-items-api</a>, a lightweight Ruby framework, which I&rsquo;m running on <a href="https://github.com/rack/rack">rack</a>
+<ul>
+<li><a href="https://sinatrarb.com">Sinatra 4.x</a></li>
+<li><a href="https://github.com/ohler55/oj">oj Optimized JSON Gem</a></li>
+<li><a href="https://puma.io">Puma</a> application server</li>
+<li><a href="https://sequel.jeremyevans.net">Sequel ORM</a></li>
+</ul>
+</li>
+<li><a href="https://github.com/charliemcelfresh/go-items-api">go-items-api</a>, a Go HTTP server, using Go&rsquo;s standard library
+<ul>
+<li><a href="https://github.com/go-chi/chi">Chi router</a></li>
+<li><a href="https://github.com/jmoiron/sqlx">sqlx</a>, a thin wrapper around Go&rsquo;s <a href="https://pkg.go.dev/database/sql">database/sql</a> package</li>
+</ul>
+</li>
+</ul>
+<p>Install / run instructions are in the READMEs at the root of all three apps. Once you install all three, you can run performance tests yourself; the Go app has a <a href="https://github.com/charliemcelfresh/go-items-api/blob/main/internal/performance_tester/main.go">performance tester</a> that fires up 10 concurrent Go http clients, does 1000 total requests against all three APIs, and prints performance results.</p>
+<p>The same MySQL database is the backend for all three. It is created, migrated, and seeded inside <a href="https://github.com/charliemcelfresh/rails-items-api">rails-items-api</a>.</p>
+<p>I&rsquo;m using these three apps as a starting point to discuss performance, simplicity, extensibility, and ease-of-use for these and potentially other frameworks and languages. This post is just an introduction; in future posts, I&rsquo;ll talk about issues around</p>
+<ul>
+<li>Tuning each of these applications</li>
+<li>Writing performant queries</li>
+<li>Routing</li>
+<li>Middlewares</li>
+<li>Auth</li>
+<li>Object allocations</li>
+<li>Managing database connections</li>
+<li>Much more</li>
+</ul>
+<h3 id="initial-results--observations">Initial Results / Observations</h3>
+<h4 id="1000-requests-10-concurrent-workers">1000 requests @10 concurrent workers</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">app</th>
+<th style="text-align:right">elapsed (sec)</th>
+<th style="text-align:right">req / s</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">Go</td>
+<td style="text-align:right">0.40</td>
+<td style="text-align:right">2,522</td>
+</tr>
+<tr>
+<td style="text-align:center">Sinatra</td>
+<td style="text-align:right">0.49</td>
+<td style="text-align:right">2,043</td>
+</tr>
+<tr>
+<td style="text-align:center">Rails</td>
+<td style="text-align:right">6.42</td>
+<td style="text-align:right">156</td>
+</tr>
+</tbody>
+</table>
+<p>While there are many optimizations to be performed in these apps, it is remarkable how the Go and Sinatra apps perform so closely to one another, given that Go is compiled.</p>
+<p>Here is a laundry list of mixed pluses / minuses for each app:</p>
+<h5 id="go">Go</h5>
+<ul>
+<li>Virtual tie with Sinatra</li>
+<li>Type safety</li>
+<li>Go http scales very simply. There is no strict limit to the number of goroutines Go&rsquo;s http server will spawn</li>
+<li>Raw SQL only &ndash; no ORM</li>
+</ul>
+<h5 id="sinatra">Sinatra</h5>
+<ul>
+<li>Virtual tie with Go</li>
+<li>Remarkably simple implementation</li>
+<li>It&rsquo;s just as simple to write raw SQL within Sequel as it is to use its ORM features</li>
+<li>Much more obvious than Rails what each component is doing, and, as you add components, much more obvious what&rsquo;s slowing down performance</li>
+<li>Can be implemented (as I have) as a <a href="https://github.com/rack/rack">rack</a> app, so we can mount any other Rack app (Rails, custom Rack app, another Sinatra app) inside our app</li>
+</ul>
+<h5 id="rails">Rails</h5>
+<ul>
+<li>Use of the ORM is more strongly encouraged than in Sequel; it&rsquo;s a bit more difficult to implement raw SQL in ActiveRecord than it is in Sequel</li>
+<li>Amazingly easy to set up a Rails API project and do many powerful things (Rake tasks / workers, crons, websockets, mailers, etc.)</li>
+<li>Can be quite difficult to implement many intermediate - advanced features in SQL and in Rails</li>
+<li>Includes lots of bells and whistles that we might want to use one day (websockets, Rake tasks/workers)</li>
+<li>We get environments (test, development, production, ++) done very nicely out of the box</li>
+</ul>
+<p>In future posts, I&rsquo;ll be tuning all three of these apps, introducing more features and performance monitoring, and demonstrating various upgrade paths. Stay tuned!</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>
