@@ -57,12 +57,14 @@
 <p>I created a <a href="https://github.com/charliemcelfresh/charlie-blog-static-files">Github repo</a> that contains my site&rsquo;s static files, generated from my Hugo static site generator, and I followed <a href="https://www.digitalocean.com/community/tutorials/how-to-deploy-a-static-site-from-github-with-digitalocean-app-platform-quickstart">this guide</a> to automatically deploy to Digital Ocean&rsquo;s <a href="https://www.digitalocean.com/pricing/app-platform#">free tier for static sites</a> each time I push to my repo&rsquo;s main branch.</p>
 <p>It seems DigitalOcean is essentially doing the same thing I did with Fargate; putting my files into container(s), and pushing them into a VM, or, more likely, some serverless setup, with DNS and certs all handled.</p>
 <h4 id="fargate-costs">Fargate Costs</h4>
-<p>Granted, Fargate isn&rsquo;t the right technology fit for my static website. Presumably, at some traffic x price point, Fargate is a good option for deploying a set of high traffic / low management services, but these hourly costs for VPCs and ECS vCPUs, even at pennies or fractions of pennies per hour strike me as comical:</p>
+<p>Granted, Fargate wasn&rsquo;t the right technology fit for my static website. I <a href="https://www.mcelfresh.info/posts/hugo-aws-part-1/">deployed my site to Fargate</a> just to check it out, and also so I could build all the required components with Terraform.</p>
+<p>But AWS&rsquo;s premise is that if I jump through its many hoops, and implement its oft complicated and poorly documneted tooling and infra, it&rsquo;ll tuck my technology into whatever corner of its vast enterprise that best suits their cost structure. $50 / month, when I do all the work? Sure, AWS has options that are cheaper than Fargate, for a static site like mine. But I&rsquo;m left with the same sense I&rsquo;ve always had about AWS: What&rsquo;s good for AWS is not necessarily good for me.</p>
+<p>Presumably, at some traffic x price point, Fargate is a good option for deploying a set of high traffic / low management services, but these hourly costs for VPCs and ECS vCPUs, even at pennies or fractions of pennies per hour, strike me as comical:</p>
 <p>Projected cost for my static site on Fargate is around $50 / month:</p>
 <p><img src="images/big-bill.png" alt="Projected monthly bill" title="Projected monthly bill"></p>
 <p>This is due to $0.01 / hour costs for VPCs, and lower, but still fixed, hourly costs for vCPU for ECS:</p>
 <p><img src="images/big-bill-why.png" alt="VPC costs" title="VPC costs"></p>
-<p>I plan to move my blog over to <a href="https://cloud.google.com/run">Google Cloud Run</a>, and also try <a href="https://cloud.google.com/api-gateway">Google API Gateway</a>, just to try these services out.</p>
+<p>I plan to move my blog over to <a href="https://cloud.google.com/run">Google Cloud Run</a>, and also try <a href="https://cloud.google.com/api-gateway">Google API Gateway</a>. Google issued me some credits.</p>
 
 		</div>
 
