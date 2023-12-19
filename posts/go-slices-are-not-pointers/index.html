@@ -59,22 +59,10 @@
 <li>The slice&rsquo;s length</li>
 <li>The slice&rsquo;s capacity</li>
 </ul>
-<h3 id="arrays-vs-slices">Arrays vs Slices</h3>
-<p>An array&rsquo;s length is part of its type; for example, [2]int is a different type from [3]int. Where we know the length of an array before compile time, and its length never changes over the lifetime of a program, arrays are often preferable to slices. The use of an array can 1) make it clear we&rsquo;re never going to change its size, and 2) be used as map keys.</p>
-<pre tabindex="0"><code>// can do this
-
-a := [2]int{1, 2}
-
-// cannot do this
-
-i := 2
-
-a := [i]int{1, 2}
-</code></pre><p>Most of the time, we use slices. The <a href="https://go.dev/blog/slices-intro">above mentioned blog post</a>, as well as the <a href="https://pkg.go.dev/slices">slices package</a>, are your best sources for how slices work.</p>
-<h3 id="slices-arent-pointers">Slices Aren&rsquo;t Pointers</h3>
-<p>One common misconception is that slices are pointers, and therefore, for example, that we never need pointers to slices. This is not the case.</p>
-<h4 id="pointer-receivers-of-types-created-from-slices">Pointer Receivers of Types Created from Slices</h4>
-<p>One common idiom is to use a type, based on a slice, as a method receiver, as with a Heap. As with any receiver whose underlying value changes when we call our method, we&rsquo;ll use pointer receivers in our <code>Push()</code> and <code>Pop()</code> methods:</p>
+<p>I think part of the misconception that &ldquo;slices are pointers&rdquo; arises from the fact that a slice contains a pointer to a value in its underlying array.</p>
+<p>Here are two examples where we need slice pointers.</p>
+<h4 id="use-a-type-based-on-a-slice-as-a-pointer-receiver">Use a Type, Based on a Slice, as a Pointer Receiver</h4>
+<p>One common idiom is to use a type, based on a slice, as a method receiver, as with a Heap. As with any receiver whose underlying value is modified as our program runs, we&rsquo;ll use pointer receivers in our <code>Push()</code> and <code>Pop()</code> methods:</p>
 <pre tabindex="0"><code>type intHeap []int
 
 func (h intHeap) Len() int {
@@ -90,14 +78,18 @@ func (h *intHeap) Push(a any) {
   *h = append(*h, a.(int))
 }
 func (h *intHeap) Pop() any {
-  old := *h
+  old := *h         // grab h&#39;s value, assign it to old
   n := len(old)
   x := old[n-1]
-  *h = old[:n-1]
+  *h = old[:n-1]    // assign truncated old to *h
   return x
 }
-</code></pre><h4 id="updating-a-slice-in-the-caller">Updating a Slice in the Caller</h4>
-<p>Here&rsquo;s another example. This function performs inorder traversal of a binary tree. With an internal <code>inOrder</code> function, we can pass our <code>output</code> tracking slice as a value:</p>
+
+func main() {
+// create, initialize, use your heap here
+  ...
+</code></pre><h4 id="update-a-callers-slice">Update a Caller&rsquo;s Slice</h4>
+<p>Here&rsquo;s another example. This function performs inorder traversal of a binary tree. If we implement an inline <code>inOrder</code> function, we can pass our <code>output</code> tracking slice as a value, because our <code>output</code> slice is in the scope of our <code>inOrder</code> function:</p>
 <pre tabindex="0"><code>func inorderTraversal(root *TreeNode) []int {
   output := []int{}
   var inOrder func(t *TreeNode)
@@ -123,7 +115,7 @@ n.Right.Left = &amp;TreeNode{Val: 3}
 fmt.Println(inOrderTraversal(n))
 
 &gt; [2 1 3]
-</code></pre><p>Let&rsquo;s use a named <code>inOrder</code> function, instead of an internal <code>inOrder</code> function:</p>
+</code></pre><p>Now, let&rsquo;s move our <code>inOrder</code> function into a named function:</p>
 <pre tabindex="0"><code>func inorderTraversal(root *TreeNode) []int {
   output := []int{}
   inOrder(output, root)
@@ -143,7 +135,7 @@ fmt.Println(inOrderTraversal(n))
 
 &gt; [] // should be [2 1 3]
 </code></pre><p>Go passes function params by value. In the above code, a copy of <code>output</code> is passed to our <code>inOrder</code> function. If &ldquo;slices are pointers&rdquo;, <code>output</code> should be filled with the right values. But it&rsquo;s not.</p>
-<p>Let&rsquo;s pass a pointer to our <code>output</code> <code>[]int</code> slice to our <code>inOrder</code> function:</p>
+<p>We make our code work by passing a pointer to our <code>output</code> <code>[]int</code> slice into our <code>inOrder</code> function:</p>
 <pre tabindex="0"><code>func inorderTraversal(root *TreeNode) []int {
   output := []int{}
   inOrder(&amp;output, root) // pass &amp;output
@@ -163,7 +155,7 @@ fmt.Println(inOrderTraversal(n))
 
 &gt; [2 1 3]
 </code></pre><h2 id="go-maps-_are_-pointers">Go Maps <em>are</em> Pointers</h2>
-<p>(In contrast, Go maps <em>are</em> pointers:)</p>
+<p>By contrast, Go maps <em>are</em> pointers. In the below code, the caller passes a map to a named function, and the value of the map changes:</p>
 <pre tabindex="0"><code>func main() {
   m := map[int]int{
     1: 1,
@@ -186,8 +178,8 @@ func increment(m map[int]int) {
 &gt; before: map[1:1 2:2]
 &gt;  after: map[1:2 2:3]
 </code></pre><h3 id="common-slice-bugs">Common Slice Bugs</h3>
-<p>I think both of the below are examples of where the misconception &ldquo;slices are pointers&rdquo; arises from. The takeaway from the below examples is that a slice contains a pointer that points to a value in an underlying array.</p>
-<h4 id="our-slice-has-the-different-values-at-different-points-in-our-code">Our Slice has the Different Values at Different Points in Our Code</h4>
+<h4 id="amending-a-slice-during-our-program-execution">Amending a Slice During our Program Execution</h4>
+<p>Here, we&rsquo;re appending an <code>[]int</code> slice to our <code>[][]int</code> output. Because our <code>[]int</code> slice is updated during the lifetime of our program, the output might not be what we expect:</p>
 <pre tabindex="0"><code>
 func main() {
   res := combinationSum([]int{2, 3, 6, 7}, 7)
@@ -249,8 +241,8 @@ func bt(output *[][]int, curr, candidates []int, idx, target int) {
 </code></pre><pre tabindex="0"><code>&gt; [2 2 3]
 &gt; [7]
 &gt; [[2 2 3] [7]] // output matches what we print from inside our `bt` function
-</code></pre><h4 id="in-a-slice-of-slices-the-collection-of-slices-each-point-to-an-individual-array">In a Slice of Slices, the Collection of Slices Each Point to an Individual Array</h4>
-<p>This one&rsquo;s trickier. When we copy a slice of slices, we&rsquo;re copying only the pointer to the underlying array of slices; we&rsquo;re not copying each member slice.</p>
+</code></pre><h4 id="in-a-slice-of-slices-each-collection-member-points-to-an-individual-array">In a Slice of Slices, Each Collection Member Points to an Individual Array</h4>
+<p>Where we copy a slice of slices, we&rsquo;re copying only the pointer to the underlying array of slices; we&rsquo;re not copying each member slice.</p>
 <p>Let&rsquo;s make a 2d 3 x 2 slice:</p>
 <pre tabindex="0"><code>2dSlice := make([][]int, 3)
 </code></pre><p>So far, we are creating a slice that points to an underlying array of length 3, of nil slices.</p>
@@ -383,7 +375,7 @@ func Print2dSl[T any](sl [][]T) {
 &gt; [2 5]
 &gt; [3 6]
 </code></pre><p>This may not seem intuitive. How can the state of our function survive individual calls to it? This is because when we call <code>Rotate2d(180, inputSl)</code>, we are copying our <code>inputSl</code> into a new <code>output</code> slice whose members remain pointers to the same underlying arrays as <code>inputSl</code>.</p>
-<p>This bug is probably out there in the wild, because, as we see, if <code>Rotate2d(270, inputSl)</code> is called independently of <code>Rotate2d(180, inputSl)</code>, it won&rsquo;t create problems. But as called above, it will.</p>
+<p>I imagine this bug is fairly prevalent in the wild, because, as we see, if <code>Rotate2d(270, inputSl)</code> is called independently of <code>Rotate2d(180, inputSl)</code>, it won&rsquo;t create problems. But as called above, it will.</p>
 <p>As you can see in the commented-out code, the fix is to copy each slice inside <code>inputSl</code> to each row of <code>output</code>.</p>
 
 		</div>

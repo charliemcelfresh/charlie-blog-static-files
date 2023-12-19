@@ -22,7 +22,9 @@ I created a Github repo that contains my site&amp;rsquo;s static files, generate
       <pubDate>Fri, 15 Dec 2023 12:51:36 -0800</pubDate>
       <guid>/posts/go-slices-are-not-pointers/</guid>
       <description>What is a Go Slice? A Go slice is a descriptor of an array segment, with three fields:
-A pointer to an element of its underlying array The slice&amp;rsquo;s length The slice&amp;rsquo;s capacity Arrays vs Slices An array&amp;rsquo;s length is part of its type; for example, [2]int is a different type from [3]int. Where we know the length of an array before compile time, and its length never changes over the lifetime of a program, arrays are often preferable to slices.</description>
+A pointer to an element of its underlying array The slice&amp;rsquo;s length The slice&amp;rsquo;s capacity I think part of the misconception that &amp;ldquo;slices are pointers&amp;rdquo; arises from the fact that a slice contains a pointer to a value in its underlying array.
+Here are two examples where we need slice pointers.
+Use a Type, Based on a Slice, as a Pointer Receiver One common idiom is to use a type, based on a slice, as a method receiver, as with a Heap.</description>
     </item>
     <item>
       <title>Twirp -- Build Simple, High Performance Go HTTP Protobuf Services</title>
