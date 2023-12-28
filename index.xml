@@ -6,8 +6,16 @@
     <description>Recent content on McElfresh Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 18 Dec 2023 12:26:51 -0800</lastBuildDate>
+    <lastBuildDate>Tue, 26 Dec 2023 11:05:54 -0800</lastBuildDate>
     <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>User JWTs vs One Encrypted Secure Cookie</title>
+      <link>/posts/jwts-vs-secure-cookies/</link>
+      <pubDate>Tue, 26 Dec 2023 11:05:54 -0800</pubDate>
+      <guid>/posts/jwts-vs-secure-cookies/</guid>
+      <description>Overview JWTs are used in a variety of contexts, but we&amp;rsquo;re going to focus on and secure cookies, used in browsers, to store user information in the browser, and provide user authentication and authorization to server-side resources.
+In my experience, JWTs are often credited with providing security and performance they do not provide. They are called &amp;ldquo;stateless&amp;rdquo;, meaning that they store state on the client, and not on the server. However, most, or perhaps any, reasonable implementation requires that JWT state be maintained on the server as well, in order that JWTs may be invalidated.</description>
+    </item>
     <item>
       <title>Move My Blog Hosting</title>
       <link>/posts/move-blog-to-digital-ocean/</link>
