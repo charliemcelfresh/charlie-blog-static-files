@@ -6,8 +6,18 @@
     <description>Recent content on McElfresh Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 26 Dec 2023 11:05:54 -0800</lastBuildDate>
+    <lastBuildDate>Tue, 02 Jan 2024 14:34:05 -0800</lastBuildDate>
     <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>How to Sort a Go Array</title>
+      <link>/posts/how-to-sort-a-go-array/</link>
+      <pubDate>Tue, 02 Jan 2024 14:34:05 -0800</pubDate>
+      <guid>/posts/how-to-sort-a-go-array/</guid>
+      <description>*** Use Go&amp;rsquo;s sort Package to Sort an Array
+Let&amp;rsquo;s sort a slice of items, then try to sort an [3]item array that has the same 3 item elements in it, in the same order, as our slice.
+(We could use sort.Ints, rather than creating our items type based on []int, but we cannot call sort.Ints on our [3]int array.) Try it
+Let&amp;rsquo;s instead create an items type based on []int, and another items type based on [3]item, and implement sort.</description>
+    </item>
     <item>
       <title>User JWTs vs One Encrypted Secure Cookie</title>
       <link>/posts/jwts-vs-secure-cookies/</link>
