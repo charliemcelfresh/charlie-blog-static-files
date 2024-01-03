@@ -154,7 +154,7 @@ func main() {
 	limit := bits.Len(uint(n))
 	pdqsort(data, 0, n, limit) // calls pdqsort
 }
-</code></pre><p><a href="https://cs.opensource.google/go/go/+/refs/tags/go1.21.5:src/sort/zsortinterface.go;l=61"><code>pdqsort</code></a> tries to choose an optimal sorting algorithm based on its input. All these algorithms handle their input (data) similarly. Let&rsquo;s look at one of them, <a href="https://cs.opensource.google/go/go/+/refs/tags/go1.21.5:src/sort/zsortinterface.go;l=38">heapSort</a></p>
+</code></pre><p><a href="https://cs.opensource.google/go/go/+/refs/tags/go1.21.5:src/sort/zsortinterface.go;l=61"><code>pdqsort</code></a> chooses a sorting algorithm, based on input. All the <code>sort</code> packages algorithms handle their input (data) similarly. Let&rsquo;s look at one of them, <a href="https://cs.opensource.google/go/go/+/refs/tags/go1.21.5:src/sort/zsortinterface.go;l=38">heapSort</a></p>
 <pre tabindex="0"><code>func heapSort(data Interface, a, b int) {
 first := a
 lo := 0
