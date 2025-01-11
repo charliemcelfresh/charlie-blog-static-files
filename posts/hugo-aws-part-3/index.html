@@ -3,16 +3,19 @@
 <head>
 	<meta charset="utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Deploy Static Website to Fargate (Part 3) - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta property="og:title" content="Deploy Static Website to Fargate (Part 3)" />
-<meta property="og:description" content="Build our Production Docker Image Based on nginx:alpine" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://www.mcelfresh.info/posts/hugo-aws-part-3/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2023-11-25T11:18:40-08:00" />
-<meta property="article:modified_time" content="2023-11-25T11:18:40-08:00" />
+	<meta property="og:url" content="https://www.mcelfresh.info/posts/hugo-aws-part-3/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="Deploy Static Website to Fargate (Part 3)">
+  <meta property="og:description" content="Build our Production Docker Image Based on nginx:alpine">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2023-11-25T11:18:40-08:00">
+    <meta property="article:modified_time" content="2023-11-25T11:18:40-08:00">
 
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Deploy Static Website to Fargate (Part 3)"/>
-<meta name="twitter:description" content="Build our Production Docker Image Based on nginx:alpine"/>
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Deploy Static Website to Fargate (Part 3)">
+  <meta name="twitter:description" content="Build our Production Docker Image Based on nginx:alpine">
 <link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
 
 	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
@@ -25,6 +28,7 @@
 <body>
 	<div class="container wrapper post">
 		<div class="header">
+	<link rel="stylesheet" href="/css/custom.css">
 	<link rel="icon" type="image/x-icon" href="/favicon.ico">
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -53,53 +57,55 @@
 		<div class="markdown">
 			<h4 id="create-our-site-docker-image">Create Our Site Docker Image</h4>
 <p>To create static files to serve in production, run</p>
-<p><code>hugo</code></p>
-<p>and notice all the new static files that were generated in <code>/public</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">hugo</span></span></span></code></pre></div>
+<p>and notice all the new static files that were generated in <strong>/public</strong></p>
 <h4 id="build-our-nginx-container">Build our Nginx Container</h4>
 <ul>
-<li>Start with a popular, stable Nginx container</li>
+<li>
+<p>Start with a popular, stable Nginx container
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">docker</span> <span style="color:#a6e22e">pull</span> <span style="color:#a6e22e">nginx</span>:<span style="color:#a6e22e">alpine</span></span></span></code></pre></div></p>
+</li>
+<li>
+<p>Start up an nginx:alpine container:</p>
+</li>
 </ul>
-<p><code>docker pull nginx:alpine</code></p>
-<ul>
-<li>Start up an nginx:alpine container:</li>
-</ul>
-<p><code>docker run -it &lt;image id&gt;</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">docker</span> <span style="color:#a6e22e">run</span> <span style="color:#f92672">-</span><span style="color:#a6e22e">it</span> &lt;<span style="color:#a6e22e">image</span> <span style="color:#a6e22e">id</span>&gt;</span></span></code></pre></div>
 <ul>
 <li>Copy its nginx default.conf into our project</li>
 </ul>
-<p><code>docker cp &lt;container name or image id&gt;:/etc/nginx/conf.d/default.conf ~/</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">docker</span> <span style="color:#a6e22e">cp</span> &lt;<span style="color:#a6e22e">container</span> <span style="color:#a6e22e">name</span> <span style="color:#a6e22e">or</span> <span style="color:#a6e22e">image</span> <span style="color:#a6e22e">id</span>&gt;:<span style="color:#f92672">/</span><span style="color:#a6e22e">etc</span><span style="color:#f92672">/</span><span style="color:#a6e22e">nginx</span><span style="color:#f92672">/</span><span style="color:#a6e22e">conf</span>.<span style="color:#a6e22e">d</span><span style="color:#f92672">/</span><span style="color:#66d9ef">default</span>.<span style="color:#a6e22e">conf</span> ~<span style="color:#f92672">/</span></span></span></code></pre></div>
 <ul>
 <li>Or, shell into the container</li>
 </ul>
-<pre tabindex="0"><code>docker exec -it &lt;image name or id&gt; sh
-cd /etc/nginx
-## copy entire file contents into memory
-</code></pre><ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">docker</span> <span style="color:#a6e22e">exec</span> <span style="color:#f92672">-</span><span style="color:#a6e22e">it</span> &lt;<span style="color:#a6e22e">image</span> <span style="color:#a6e22e">name</span> <span style="color:#a6e22e">or</span> <span style="color:#a6e22e">id</span>&gt; <span style="color:#a6e22e">sh</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">cd</span> <span style="color:#f92672">/</span><span style="color:#a6e22e">etc</span><span style="color:#f92672">/</span><span style="color:#a6e22e">nginx</span></span></span></code></pre></div>
+<ul>
 <li>Add a healthcheck to our copy of nginx.conf</li>
 </ul>
-<pre tabindex="0"><code># under location / block:
-location /health {
-    access_log off;
-    return 200 &#39;OK&#39;;
-}
-</code></pre><p>Create this Dockerfile</p>
-<p>Dockerfile</p>
-<pre tabindex="0"><code>FROM nginx:alpine
-
-# Copy static site files to the Nginx document root
-COPY ./public/. /usr/share/nginx/html
-
-# Copy custom nginx.conf with healthcheck to the container
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Command to start Nginx
-CMD [&#34;nginx&#34;, &#34;-g&#34;, &#34;daemon off;&#34;]
-</code></pre><p>Build our image. Note that we&rsquo;re using buildx, and passing in a platform, because my Fargate setup expects x86 images, and I am building with a Mac Air M1:</p>
-<p><code>docker buildx build --platform linux/amd64 -t &lt;docker registry URI&gt; ..</code></p>
-<p><code>docker push &lt;docker registry URI&gt;</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">#</span> <span style="color:#a6e22e">under</span> <span style="color:#a6e22e">location</span> <span style="color:#f92672">/</span> <span style="color:#a6e22e">block</span>:
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span><span style="color:#a6e22e">location</span> <span style="color:#f92672">/</span><span style="color:#a6e22e">health</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3</span><span>    <span style="color:#a6e22e">access_log</span> <span style="color:#a6e22e">off</span>;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4</span><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">200</span> <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">OK</span><span style="color:#960050;background-color:#1e0010">&#39;</span>;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5</span><span>}</span></span></code></pre></div>
+<p>Create this Dockerfile</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#960050;background-color:#1e0010">#</span> <span style="color:#a6e22e">Dockerfile</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span><span style="color:#a6e22e">FROM</span> <span style="color:#a6e22e">nginx</span>:<span style="color:#a6e22e">alpine</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span><span style="color:#960050;background-color:#1e0010">#</span> <span style="color:#a6e22e">Copy</span> <span style="color:#a6e22e">static</span> <span style="color:#a6e22e">site</span> <span style="color:#a6e22e">files</span> <span style="color:#a6e22e">to</span> <span style="color:#a6e22e">the</span> <span style="color:#a6e22e">Nginx</span> <span style="color:#a6e22e">document</span> <span style="color:#a6e22e">root</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span><span style="color:#a6e22e">COPY</span> .<span style="color:#f92672">/</span><span style="color:#a6e22e">public</span><span style="color:#f92672">/</span>. <span style="color:#f92672">/</span><span style="color:#a6e22e">usr</span><span style="color:#f92672">/</span><span style="color:#a6e22e">share</span><span style="color:#f92672">/</span><span style="color:#a6e22e">nginx</span><span style="color:#f92672">/</span><span style="color:#a6e22e">html</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span><span style="color:#960050;background-color:#1e0010">#</span> <span style="color:#a6e22e">Copy</span> <span style="color:#a6e22e">custom</span> <span style="color:#a6e22e">nginx</span>.<span style="color:#a6e22e">conf</span> <span style="color:#a6e22e">with</span> <span style="color:#a6e22e">healthcheck</span> <span style="color:#a6e22e">to</span> <span style="color:#a6e22e">the</span> <span style="color:#a6e22e">container</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span><span style="color:#a6e22e">COPY</span> <span style="color:#a6e22e">nginx</span>.<span style="color:#a6e22e">conf</span> <span style="color:#f92672">/</span><span style="color:#a6e22e">etc</span><span style="color:#f92672">/</span><span style="color:#a6e22e">nginx</span><span style="color:#f92672">/</span><span style="color:#a6e22e">conf</span>.<span style="color:#a6e22e">d</span><span style="color:#f92672">/</span><span style="color:#66d9ef">default</span>.<span style="color:#a6e22e">conf</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span><span style="color:#960050;background-color:#1e0010">#</span> <span style="color:#a6e22e">Expose</span> <span style="color:#a6e22e">port</span> <span style="color:#ae81ff">80</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span><span style="color:#a6e22e">EXPOSE</span> <span style="color:#ae81ff">80</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span><span style="color:#960050;background-color:#1e0010">#</span> <span style="color:#a6e22e">Command</span> <span style="color:#a6e22e">to</span> <span style="color:#a6e22e">start</span> <span style="color:#a6e22e">Nginx</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15</span><span><span style="color:#a6e22e">CMD</span> [<span style="color:#e6db74">&#34;nginx&#34;</span>, <span style="color:#e6db74">&#34;-g&#34;</span>, <span style="color:#e6db74">&#34;daemon off;&#34;</span>]</span></span></code></pre></div>
+<p>Build our image. Note that we&rsquo;re using buildx, and passing in a platform, because my Fargate setup expects x86 images, and I am building with a Mac Air M1:</p>
+<p><strong>docker buildx build &ndash;platform linux/amd64 -t <!-- raw HTML omitted --> ..</strong></p>
+<p><strong>docker push <!-- raw HTML omitted --></strong></p>
 
 		</div>
 

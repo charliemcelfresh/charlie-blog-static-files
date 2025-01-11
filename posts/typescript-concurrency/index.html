@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>TypeScript Concurrency - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:url" content="https://www.mcelfresh.info/posts/typescript-concurrency/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="TypeScript Concurrency">
+  <meta property="og:description" content="Speed up your Node.JS APIs">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2024-05-24T14:45:10-07:00">
+    <meta property="article:modified_time" content="2024-05-24T14:45:10-07:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="TypeScript Concurrency">
+  <meta name="twitter:description" content="Speed up your Node.JS APIs">
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="stylesheet" href="/css/custom.css">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">TypeScript Concurrency</h1>
+			<div class="meta">Posted at &mdash; May 24, 2024</div>
+		</div>
+
+		<div class="markdown">
+			<p>TypeScript uses type inference to provide <em>some</em> type safety. It &ldquo;compiles&rdquo; into JavaScript, and has become a popular enhancement to JavaScript applications.</p>
+<p>JavaScript is single-threaded. Its concurrency mechanism is its event loop. In a nutshell, here&rsquo;s how the JavaScript event loop works:</p>
+<p>There are two pieces to the JavaScript event loop: The event loop itself, and the event FIFO (First In First Out) queue.</p>
+<p>This is very useful where it comes to IO, such as networking IO, or reading files. These two mechanisms work in similar ways; we&rsquo;re going to focus on networking.</p>
+<p>Where the OS makes a network HTTP request, or any other type of request where it expects a response, it opens a file descriptor, and returns immediately. A separate mechanism (&ldquo;select&rdquo;, &ldquo;poll&rdquo;, or &ldquo;epoll&rdquo;) polls for the response, and, where the response is available, writes the response to that file descriptor.</p>
+<p>This is called &ldquo;non-blocking IO&rdquo;, and JavaScript takes advantage of this with its event loop. A non-blocking IO request is put onto the event loop and returns control to the JS main thread immediately. The request is handed off to the OS as described above. The OS gets the response, which is placed into JavaScript&rsquo;s FIFO queue. The return values from the queue are injected into the main function code where it calls &ldquo;await&rdquo;. If the main function does not call &ldquo;await&rdquo;, the values will return after the main function returns.</p>
+<p>Our Code</p>
+<p><a href="https://github.com/charliemcelfresh/charlie-microservices">Here</a> is a Go application that provides a way to generate fake &ldquo;transactions&rdquo;. It has three endpoints:</p>
+<ul>
+<li>api/v1/charlie_microservices.TransactionService/GetMasterCardTransactions</li>
+<li>api/v1/charlie_microservices.TransactionService/GetVisaTransactions</li>
+<li>api/v1/charlie_microservices.TransactionService/GetAmexTransactions</li>
+</ul>
+<p>Each endpoint sleeps for 1 second before it delivers its response, in order to illustrate the power of JS concurrency.</p>
+<p><a href="https://github.com/charliemcelfresh/charlie-typescript-demo">Here is our TypeScript app</a> It&rsquo;s a simple little HTTP service with two endpoints.</p>
+<ul>
+<li>/api/v1/concurrent_transactions</li>
+<li>/api/v1/serial_transactions</li>
+</ul>
+<p>The two endpoints make requests to all three of the Go services endpoints, combine the results, and return them. <strong>/api/v1/concurrent_transactions</strong> performs its requests concurrently, and <strong>/api/v1/serial_transactions</strong> performs its requests serially.</p>
+<p>Here are the relevant part of the <strong>charlie-typescript-demo</strong> code. In <strong>api/v1/concurrent_transactions</strong>:</p>
+<ul>
+<li>We send three requests to the Go app at the same time</li>
+<li>Control returns to our function immediately</li>
+<li>When all three results are available, we inject them at <strong>await Promise.all</strong></li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span>  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">method</span> <span style="color:#f92672">==</span>= <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">GET</span><span style="color:#960050;background-color:#1e0010">&#39;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">url</span> <span style="color:#f92672">==</span>= <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">/</span><span style="color:#a6e22e">api</span><span style="color:#f92672">/</span><span style="color:#a6e22e">v1</span><span style="color:#f92672">/</span><span style="color:#a6e22e">concurrent_transactions</span><span style="color:#960050;background-color:#1e0010">&#39;</span>) {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>    <span style="color:#a6e22e">authenticateRequest</span>(<span style="color:#a6e22e">req</span>, <span style="color:#a6e22e">res</span>, <span style="color:#a6e22e">async</span> () =&gt; {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span>      <span style="color:#a6e22e">try</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>        <span style="color:#75715e">// Make concurrent requests to the external transactions service
+</span></span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">const</span> [<span style="color:#a6e22e">visaResponse</span>, <span style="color:#a6e22e">amexResponse</span>, <span style="color:#a6e22e">masterCardResponse</span>] = <span style="color:#a6e22e">await</span> <span style="color:#a6e22e">Promise</span>.<span style="color:#a6e22e">all</span>([
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>          <span style="color:#a6e22e">getVisaTransactions</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span>          <span style="color:#a6e22e">getAmexTransactions</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>          <span style="color:#a6e22e">getMasterCardTransactions</span>()
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>        ]);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>        <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">allTransactions</span> = [
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span>          <span style="color:#f92672">...</span><span style="color:#a6e22e">visaResponse</span>.<span style="color:#a6e22e">transactions</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>          <span style="color:#f92672">...</span><span style="color:#a6e22e">amexResponse</span>.<span style="color:#a6e22e">transactions</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span>          <span style="color:#f92672">...</span><span style="color:#a6e22e">masterCardResponse</span>.<span style="color:#a6e22e">transactions</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15</span><span>        ];
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17</span><span>        <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">statusCode</span> = <span style="color:#ae81ff">200</span>;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18</span><span>        <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">setHeader</span>(<span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">Content</span><span style="color:#f92672">-</span><span style="color:#a6e22e">Type</span><span style="color:#960050;background-color:#1e0010">&#39;</span>, <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">application</span><span style="color:#f92672">/</span><span style="color:#a6e22e">json</span><span style="color:#960050;background-color:#1e0010">&#39;</span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19</span><span>        <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">end</span>(<span style="color:#a6e22e">JSON</span>.<span style="color:#a6e22e">stringify</span>({ <span style="color:#a6e22e">transactions</span>: <span style="color:#a6e22e">allTransactions</span> }));
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20</span><span>  <span style="color:#f92672">...</span></span></span></code></pre></div>
+<p>By contrast, in <strong>/api/v1/serial_transactions</strong>, we send off one request, await its response, then send the next one:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span>  } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span>  (<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">method</span> <span style="color:#f92672">==</span>= <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">GET</span><span style="color:#960050;background-color:#1e0010">&#39;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">url</span> <span style="color:#f92672">==</span>= <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">/</span><span style="color:#a6e22e">api</span><span style="color:#f92672">/</span><span style="color:#a6e22e">v1</span><span style="color:#f92672">/</span><span style="color:#a6e22e">serial_transactions</span><span style="color:#960050;background-color:#1e0010">&#39;</span>) {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>    <span style="color:#a6e22e">authenticateRequest</span>(<span style="color:#a6e22e">req</span>, <span style="color:#a6e22e">res</span>, <span style="color:#a6e22e">async</span> () =&gt; {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span>      <span style="color:#a6e22e">try</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>        <span style="color:#75715e">// Make serial requests to the external transactions service
+</span></span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">visaResponse</span> = <span style="color:#a6e22e">await</span> <span style="color:#a6e22e">getVisaTransactions</span>();
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>        <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">amexResponse</span> = <span style="color:#a6e22e">await</span> <span style="color:#a6e22e">getAmexTransactions</span>();
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span>        <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">masterCardResponse</span> = <span style="color:#a6e22e">await</span> <span style="color:#a6e22e">getMasterCardTransactions</span>();
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>        <span style="color:#75715e">// Combine transactions from all responses
+</span></span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">allTransactions</span> = [
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>          <span style="color:#f92672">...</span><span style="color:#a6e22e">visaResponse</span>.<span style="color:#a6e22e">transactions</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span>          <span style="color:#f92672">...</span><span style="color:#a6e22e">amexResponse</span>.<span style="color:#a6e22e">transactions</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>          <span style="color:#f92672">...</span><span style="color:#a6e22e">masterCardResponse</span>.<span style="color:#a6e22e">transactions</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span>        ];
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16</span><span>        <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">statusCode</span> = <span style="color:#ae81ff">200</span>;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17</span><span>        <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">setHeader</span>(<span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">Content</span><span style="color:#f92672">-</span><span style="color:#a6e22e">Type</span><span style="color:#960050;background-color:#1e0010">&#39;</span>, <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">application</span><span style="color:#f92672">/</span><span style="color:#a6e22e">json</span><span style="color:#960050;background-color:#1e0010">&#39;</span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18</span><span>        <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">end</span>(<span style="color:#a6e22e">JSON</span>.<span style="color:#a6e22e">stringify</span>({ <span style="color:#a6e22e">transactions</span>: <span style="color:#a6e22e">allTransactions</span> }));
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19</span><span>  <span style="color:#f92672">...</span></span></span></code></pre></div>
+<p>As you&rsquo;ll see in <a href="https://youtu.be/tdgANJRkVOc">this brief video</a>, the response for <strong>/api/v1/concurrent_transactions</strong> returns in about 1 second, whereas the response for <strong>/api/v1/serial_transactions</strong> returns in about 3 seconds.</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Techniques in Problem Solving - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:url" content="http://localhost:1313/posts/techniques-in-problem-solving/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="Techniques in Problem Solving">
+  <meta property="og:description" content="O(n)
+inserting into slice in O(1) where we want to, say, remove a random element from a slice keep a map of elementVal =&gt; sliceIdx swap the rightmost element from the slice to the index of the slice element we want to remove change the rightmost element’s map index to that of the element we’re removing lop off the rightmost slice element Patterns
+Euclid – greatest common divisor and least common multiple Edit distance string matching https://en.">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2024-01-01T14:04:12-08:00">
+    <meta property="article:modified_time" content="2024-01-01T14:04:12-08:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Techniques in Problem Solving">
+  <meta name="twitter:description" content="O(n)
+inserting into slice in O(1) where we want to, say, remove a random element from a slice keep a map of elementVal =&gt; sliceIdx swap the rightmost element from the slice to the index of the slice element we want to remove change the rightmost element’s map index to that of the element we’re removing lop off the rightmost slice element Patterns
+Euclid – greatest common divisor and least common multiple Edit distance string matching https://en.">
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="http://localhost:1313/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="http://localhost:1313/css/main.css" />
+
+	
+	<script src="http://localhost:1313/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="http://localhost:1313/">
+	<h1 class="site-title"><a href="http://localhost:1313/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Techniques in Problem Solving</h1>
+			<div class="meta">Posted at &mdash; Jan 1, 2024 <span class="draft-label">DRAFT</span> </div>
+		</div>
+
+		<div class="markdown">
+			<ul>
+<li>
+<p>O(n)</p>
+<ul>
+<li>inserting into slice in O(1)
+<ul>
+<li>where we want to, say, remove a random element from a slice
+<ul>
+<li>keep a map of elementVal =&gt; sliceIdx</li>
+<li>swap the rightmost element from the slice to the index of the slice element we want to remove</li>
+<li>change the rightmost element&rsquo;s map index to that of the element we&rsquo;re removing</li>
+<li>lop off the rightmost slice element</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>Patterns</p>
+<ul>
+<li>Euclid &ndash; greatest common divisor and least common multiple</li>
+<li>Edit distance</li>
+<li>string matching <a href="https://en.wikipedia.org/wiki/Knuth">https://en.wikipedia.org/wiki/Knuth</a>–Morris–Pratt_algorithm</li>
+<li>grab integers from strings
+<ul>
+<li>left to right and right to left</li>
+</ul>
+</li>
+<li>Tortoise-hare (slow - fast)
+<ul>
+<li>find midpoint of a linked list</li>
+<li>??</li>
+</ul>
+</li>
+<li>Where we know an array stores numbers from 1..n, and one element is missing, and one is duplicated, we go through the array once, and flip values to negative. &lt;&ndash; find which problem this was</li>
+<li>Sentinel values</li>
+<li>Linked lists</li>
+<li>Bit techniques</li>
+<li>recursion and backtracking</li>
+<li>binary search</li>
+<li>divide and conquer</li>
+<li>greedy</li>
+<li>dynamic programming</li>
+<li>dfs / bfs</li>
+<li>navigating grids</li>
+<li><a href="https://en.wikipedia.org/wiki/CYK_algorithm">CYK Algorithm</a></li>
+<li>Ray tracing</li>
+<li><a href="https://en.wikipedia.org/wiki/Newton%27s_method">Newton&rsquo;s method</a></li>
+<li>Tree traversal
+<ul>
+<li>Set binary tree</li>
+<li>BST</li>
+<li>AVL tree</li>
+<li>Other balancing schemes: Red-Black, Splay, 2-3, etc.</li>
+</ul>
+</li>
+<li>Union find</li>
+<li>Two&rsquo;s complement</li>
+</ul>
+</li>
+<li>
+<p>Other patterns</p>
+<ul>
+<li>Boyer-Moore voting algorithm</li>
+<li>Completing the square</li>
+<li>Floyd&rsquo;s cycle-finding algorithm</li>
+</ul>
+</li>
+<li>
+<p>Go-specific techniques</p>
+<ul>
+<li>String buffers</li>
+<li>Strings, runes and bytes</li>
+<li>Slices, slices of slices, pointer problems</li>
+<li>map keys
+<ul>
+<li>arrays</li>
+</ul>
+</li>
+<li>structuring recursive functions to provide output
+<ul>
+<li>channels, internal functions</li>
+</ul>
+</li>
+<li>generics</li>
+</ul>
+</li>
+<li>
+<p>different solutions for powersets</p>
+<ul>
+<li>cascading</li>
+<li>backtracking</li>
+<li>powerset formula</li>
+<li>dynamic programming</li>
+</ul>
+</li>
+<li>
+<p>maps, arrays, and slices</p>
+<ul>
+<li>can sort an array if the receiver is a pointer</li>
+<li>use arrays or slices, instead of a map, where the map is discrete and small, like ascii chars</li>
+</ul>
+</li>
+<li>
+<p>double / triple pointers</p>
+<ul>
+<li>dealing with sets of matching chars within strings / numbers</li>
+</ul>
+</li>
+<li>
+<p>heaps, queues, stacks</p>
+<ul>
+<li>BFS, DFS</li>
+</ul>
+</li>
+<li>
+<p>other permutations</p>
+<ul>
+<li>with dupes</li>
+<li>permutations of strings
+<ul>
+<li>Heap&rsquo;s algorithm</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>directed graphs</p>
+<ul>
+<li>DAG</li>
+<li>Djikstra</li>
+<li>Bellman-Ford</li>
+<li>Floyd-Warshall</li>
+<li>A*</li>
+<li>Other</li>
+</ul>
+</li>
+<li>
+<p>Trees</p>
+</li>
+<li>
+<p>Binary Search and sorting</p>
+<ul>
+<li>Selection sort</li>
+<li>Insertion sort</li>
+<li>Merge sort</li>
+<li>Quicksort</li>
+<li>Radix sort</li>
+</ul>
+</li>
+</ul>
+<p>&ndash; making a copy of a slice before appending it to another slice &ndash; two techniques that work and perform the same
+&ndash; make a copy and append it</p>
+<pre tabindex="0"><code>  output = [][]int{}
+  for {
+    // doing something here that will change the elements of curr
+    cp := make([]int, len(curr))
+    copy(cp, curr)
+    output = append(output, curr)
+  }
+</code></pre><p>can also do this, these two</p>
+<pre tabindex="0"><code>  output = [][]int{}
+  for {
+    // doing something here that will change the elements of curr
+    output = append(output, append([]int, curr...)) // copy and append in one line
+  }
+</code></pre>
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>

@@ -3,16 +3,19 @@
 <head>
 	<meta charset="utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Create Related Records in Postgres - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta property="og:title" content="Create Related Records in Postgres" />
-<meta property="og:description" content="in one query using a Common Table Expression (CTE)" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://www.mcelfresh.info/posts/create-multiple-postgres-records-one-query/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-03-02T11:30:41-08:00" />
-<meta property="article:modified_time" content="2024-03-02T11:30:41-08:00" />
+	<meta property="og:url" content="https://www.mcelfresh.info/posts/create-multiple-postgres-records-one-query/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="Create Related Records in Postgres">
+  <meta property="og:description" content="in one query using a Common Table Expression (CTE)">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2024-03-02T11:30:41-08:00">
+    <meta property="article:modified_time" content="2024-03-02T11:30:41-08:00">
 
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Create Related Records in Postgres"/>
-<meta name="twitter:description" content="in one query using a Common Table Expression (CTE)"/>
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Create Related Records in Postgres">
+  <meta name="twitter:description" content="in one query using a Common Table Expression (CTE)">
 <link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
 
 	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
@@ -25,6 +28,7 @@
 <body>
 	<div class="container wrapper post">
 		<div class="header">
+	<link rel="stylesheet" href="/css/custom.css">
 	<link rel="icon" type="image/x-icon" href="/favicon.ico">
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -54,70 +58,73 @@
 			<h3 id="start-with-dbmate">Start with Dbmate</h3>
 <p><a href="https://github.com/amacneil/dbmate">Dbmate</a> is a SQL database migration tool written in Go. It is the simplest, most usable migration tool I&rsquo;ve found, and I highly encourage you to consider using it in your project, regardless of your project&rsquo;s language.</p>
 <p>Here are a few Dbmate migrations you can use to create the tables we&rsquo;ll need for this post:</p>
-<pre tabindex="0"><code>&gt; dbmate new create_users_table
-</code></pre><pre tabindex="0"><code>-- migrate:up
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">dbmate</span> <span style="color:#a6e22e">new</span> <span style="color:#a6e22e">create_users_table</span></span></span></code></pre></div>
+<p>Inside your newly created migration:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#f92672">--</span> <span style="color:#a6e22e">migrate</span>:<span style="color:#a6e22e">up</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span><span style="color:#a6e22e">CREATE</span> <span style="color:#a6e22e">TABLE</span> <span style="color:#a6e22e">users</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>    <span style="color:#a6e22e">id</span> <span style="color:#a6e22e">uuid</span> <span style="color:#a6e22e">PRIMARY</span> <span style="color:#a6e22e">KEY</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">gen_random_uuid</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span>    <span style="color:#a6e22e">email</span> <span style="color:#a6e22e">TEXT</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>    <span style="color:#a6e22e">created_at</span> <span style="color:#a6e22e">timestamptz</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">NOW</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span><span style="color:#a6e22e">updated_at</span> <span style="color:#a6e22e">timestamptz</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">NOW</span>()
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span><span style="color:#a6e22e">CREATE</span> <span style="color:#a6e22e">INDEX</span> <span style="color:#a6e22e">idx_user__email</span> <span style="color:#a6e22e">ON</span> <span style="color:#a6e22e">users</span> (<span style="color:#a6e22e">email</span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span><span style="color:#f92672">--</span> <span style="color:#a6e22e">migrate</span>:<span style="color:#a6e22e">down</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span><span style="color:#a6e22e">DROP</span> <span style="color:#a6e22e">TABLE</span> <span style="color:#a6e22e">users</span>;</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span>&gt; <span style="color:#a6e22e">dbmate</span> <span style="color:#a6e22e">new</span> <span style="color:#a6e22e">create_items_table</span></span></span></code></pre></div>
+<p>Inside your newly created migration:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#f92672">--</span> <span style="color:#a6e22e">migrate</span>:<span style="color:#a6e22e">up</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span><span style="color:#a6e22e">CREATE</span> <span style="color:#a6e22e">TABLE</span> <span style="color:#a6e22e">items</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>    <span style="color:#a6e22e">id</span> <span style="color:#a6e22e">uuid</span> <span style="color:#a6e22e">PRIMARY</span> <span style="color:#a6e22e">KEY</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">gen_random_uuid</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span>    <span style="color:#a6e22e">name</span> <span style="color:#a6e22e">TEXT</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>    <span style="color:#a6e22e">created_at</span> <span style="color:#a6e22e">timestamptz</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">NOW</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span>    <span style="color:#a6e22e">updated_at</span> <span style="color:#a6e22e">timestamptz</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">NOW</span>()
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span><span style="color:#a6e22e">CREATE</span> <span style="color:#a6e22e">UNIQUE</span> <span style="color:#a6e22e">INDEX</span> <span style="color:#a6e22e">idx_name_uniq</span> <span style="color:#a6e22e">ON</span> <span style="color:#a6e22e">items</span> (<span style="color:#a6e22e">name</span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span><span style="color:#f92672">--</span> <span style="color:#a6e22e">migrate</span>:<span style="color:#a6e22e">down</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span><span style="color:#a6e22e">DROP</span> <span style="color:#a6e22e">TABLE</span> <span style="color:#a6e22e">items</span>;</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#a6e22e">dbmate</span> <span style="color:#a6e22e">new</span> <span style="color:#a6e22e">create</span> <span style="color:#a6e22e">user_items_table</span></span></span></code></pre></div>
+<p>Inside your newly created migration:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#f92672">--</span> <span style="color:#a6e22e">migrate</span>:<span style="color:#a6e22e">up</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span><span style="color:#a6e22e">CREATE</span> <span style="color:#a6e22e">TABLE</span> <span style="color:#a6e22e">user_items</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>    <span style="color:#a6e22e">user_id</span> <span style="color:#a6e22e">uuid</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span> <span style="color:#a6e22e">REFERENCES</span> <span style="color:#a6e22e">users</span>(<span style="color:#a6e22e">id</span>) <span style="color:#a6e22e">DEFERRABLE</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span>    <span style="color:#a6e22e">item_id</span> <span style="color:#a6e22e">uuid</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span> <span style="color:#a6e22e">REFERENCES</span> <span style="color:#a6e22e">items</span>(<span style="color:#a6e22e">id</span>) <span style="color:#a6e22e">DEFERRABLE</span>,
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>    <span style="color:#a6e22e">created_at</span> <span style="color:#a6e22e">timestamptz</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">NOW</span>(),
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span>    <span style="color:#a6e22e">updated_at</span> <span style="color:#a6e22e">timestamptz</span> <span style="color:#a6e22e">NOT</span> <span style="color:#a6e22e">NULL</span> <span style="color:#a6e22e">DEFAULT</span> <span style="color:#a6e22e">NOW</span>()
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span><span style="color:#a6e22e">CREATE</span> <span style="color:#a6e22e">UNIQUE</span> <span style="color:#a6e22e">INDEX</span> <span style="color:#a6e22e">idx_user_items__user_id_item_id_uniq</span> <span style="color:#a6e22e">ON</span> <span style="color:#a6e22e">user_items</span> (<span style="color:#a6e22e">user_id</span>, <span style="color:#a6e22e">item_id</span>);
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span><span style="color:#f92672">--</span> <span style="color:#a6e22e">migrate</span>:<span style="color:#a6e22e">down</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span><span style="color:#a6e22e">DROP</span> <span style="color:#a6e22e">TABLE</span> <span style="color:#a6e22e">user_items</span>;</span></span></code></pre></div>
+<h3 id="run-this-query">Run this query</h3>
+<p>Common Table Expressions (CTEs), in addition to providing a clean way to express SQL, provide control over the order in which commands are run, as well as the ability to wrap complex commands inside one transaction. Here, we create a <strong>users</strong> record, and an <strong>items</strong> record, then a <strong>user_items</strong> record, all inside one transaction:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#a6e22e">WITH</span> <span style="color:#a6e22e">u</span> <span style="color:#a6e22e">AS</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>    <span style="color:#a6e22e">INSERT</span> <span style="color:#a6e22e">INTO</span> <span style="color:#a6e22e">users</span> (<span style="color:#a6e22e">email</span>) <span style="color:#a6e22e">VALUES</span> (<span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">user</span><span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">example</span>.<span style="color:#a6e22e">com</span><span style="color:#960050;background-color:#1e0010">&#39;</span>) <span style="color:#a6e22e">RETURNING</span> <span style="color:#a6e22e">id</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span>), <span style="color:#a6e22e">i</span> <span style="color:#a6e22e">AS</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>    <span style="color:#a6e22e">INSERT</span> <span style="color:#a6e22e">INTO</span> <span style="color:#a6e22e">items</span> (<span style="color:#a6e22e">name</span>) <span style="color:#a6e22e">VALUES</span> (<span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#a6e22e">Widget</span> <span style="color:#ae81ff">01</span><span style="color:#960050;background-color:#1e0010">&#39;</span>) <span style="color:#a6e22e">RETURNING</span> <span style="color:#a6e22e">id</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span>), <span style="color:#a6e22e">u_and_i</span> <span style="color:#a6e22e">AS</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>    <span style="color:#a6e22e">SELECT</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span>        <span style="color:#a6e22e">u</span>.<span style="color:#a6e22e">id</span> <span style="color:#a6e22e">AS</span> <span style="color:#a6e22e">user_id</span>, <span style="color:#a6e22e">i</span>.<span style="color:#a6e22e">id</span> <span style="color:#a6e22e">AS</span> <span style="color:#a6e22e">item_id</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>    <span style="color:#a6e22e">FROM</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>        <span style="color:#a6e22e">u</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span>    <span style="color:#a6e22e">JOIN</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>        <span style="color:#a6e22e">i</span> <span style="color:#a6e22e">ON</span> <span style="color:#ae81ff">1</span>=<span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span><span style="color:#a6e22e">INSERT</span> <span style="color:#a6e22e">INTO</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span>    <span style="color:#a6e22e">user_items</span> (<span style="color:#a6e22e">user_id</span>, <span style="color:#a6e22e">item_id</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15</span><span><span style="color:#a6e22e">SELECT</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16</span><span>    <span style="color:#a6e22e">user_id</span>, <span style="color:#a6e22e">item_id</span> <span style="color:#a6e22e">FROM</span> <span style="color:#a6e22e">u_and_i</span></span></span></code></pre></div>
 
-CREATE TABLE users (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT NOT NULL,
-    created_at timestamptz DEFAULT NOW(),
-updated_at timestamptz DEFAULT NOW()
-);
-
-CREATE INDEX idx_user__email ON users (email);
-
--- migrate:down
-
-DROP TABLE users;
-</code></pre><pre tabindex="0"><code>&gt; dbmate new create_items_table
-</code></pre><pre tabindex="0"><code>-- migrate:up
-
-CREATE TABLE items (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT NOW(),
-    updated_at timestamptz NOT NULL DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX idx_name_uniq ON items (name);
-
--- migrate:down
-
-DROP TABLE items;
-</code></pre><pre tabindex="0"><code>dbmate new create user_items_table
-</code></pre><pre tabindex="0"><code>-- migrate:up
-
-CREATE TABLE user_items (
-    user_id uuid NOT NULL REFERENCES users(id) DEFERRABLE,
-    item_id uuid NOT NULL REFERENCES items(id) DEFERRABLE,
-    created_at timestamptz NOT NULL DEFAULT NOW(),
-    updated_at timestamptz NOT NULL DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX idx_user_items__user_id_item_id_uniq ON user_items (user_id, item_id);
-
--- migrate:down
-
-DROP TABLE user_items;
-</code></pre><h3 id="run-this-query">Run this query</h3>
-<p>Common Table Expressions (CTEs), in addition to providing a clean way to express SQL, provide control over the order in which commands are run, as well as the ability to wrap complex commands inside one transaction. Here, we create a <code>users</code> record, and an <code>items</code> record, then a <code>user_items</code> record, all inside one transaction:</p>
-<pre tabindex="0"><code>WITH u AS (
-    INSERT INTO users (email) VALUES (&#39;user@example.com&#39;) RETURNING id
-), i AS (
-    INSERT INTO items (name) VALUES (&#39;Widget 01&#39;) RETURNING id
-), u_and_i AS (
-    SELECT
-        u.id AS user_id, i.id AS item_id
-    FROM
-        u
-    JOIN
-        i ON 1=1
-)
-INSERT INTO
-    user_items (user_id, item_id)
-SELECT
-    user_id, item_id FROM u_and_i
-</code></pre>
 		</div>
 
 		<div class="post-tags">

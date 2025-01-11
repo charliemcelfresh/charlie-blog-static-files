@@ -3,16 +3,19 @@
 <head>
 	<meta charset="utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Deploy Static Website to Fargate (Part 2) - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta property="og:title" content="Deploy Static Website to Fargate (Part 2)" />
-<meta property="og:description" content="Build our Static Site with Hugo" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://www.mcelfresh.info/posts/hugo-aws-part-2/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2023-11-25T11:18:40-08:00" />
-<meta property="article:modified_time" content="2023-11-25T11:18:40-08:00" />
+	<meta property="og:url" content="https://www.mcelfresh.info/posts/hugo-aws-part-2/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="Deploy Static Website to Fargate (Part 2)">
+  <meta property="og:description" content="Build our Static Site with Hugo">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2023-11-25T11:18:40-08:00">
+    <meta property="article:modified_time" content="2023-11-25T11:18:40-08:00">
 
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Deploy Static Website to Fargate (Part 2)"/>
-<meta name="twitter:description" content="Build our Static Site with Hugo"/>
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Deploy Static Website to Fargate (Part 2)">
+  <meta name="twitter:description" content="Build our Static Site with Hugo">
 <link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
 
 	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
@@ -25,6 +28,7 @@
 <body>
 	<div class="container wrapper post">
 		<div class="header">
+	<link rel="stylesheet" href="/css/custom.css">
 	<link rel="icon" type="image/x-icon" href="/favicon.ico">
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -61,36 +65,36 @@
 <p>Create our site</p>
 </li>
 </ul>
-<pre tabindex="0"><code>hugo new site charlie-blog
-cd charlie-blog
-git init
-git submodule add https://github.com/vividvilla/ezhil themes/ezhil
-echo &#34;theme = &#39;ezhil&#39;&#34; &gt;&gt; hugo.toml
-hugo server
-</code></pre><p>Now Hugo should be running on http://localhost:1313</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">hugo</span> <span style="color:#a6e22e">new</span> <span style="color:#a6e22e">site</span> <span style="color:#a6e22e">charlie</span><span style="color:#f92672">-</span><span style="color:#a6e22e">blog</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">cd</span> <span style="color:#a6e22e">charlie</span><span style="color:#f92672">-</span><span style="color:#a6e22e">blog</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">git</span> <span style="color:#a6e22e">init</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">git</span> <span style="color:#a6e22e">submodule</span> <span style="color:#a6e22e">add</span> <span style="color:#a6e22e">https</span>:<span style="color:#75715e">//github.com/vividvilla/ezhil themes/ezhil
+</span></span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5</span><span><span style="color:#75715e"></span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">echo</span> <span style="color:#e6db74">&#34;theme = &#39;ezhil&#39;&#34;</span> <span style="color:#f92672">&gt;&gt;</span> <span style="color:#a6e22e">hugo</span>.<span style="color:#a6e22e">toml</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">hugo</span> <span style="color:#a6e22e">server</span></span></span></code></pre></div>
+<p>Now Hugo should be running on http://localhost:1313</p>
 <p>We&rsquo;ll make a couple modifications:</p>
 <ul>
 <li>Add the ability to override css:</li>
 </ul>
-<pre tabindex="0"><code>cp themes/ezhil/layouts/partials/head.html layouts/partials/
-</code></pre><p>Add these lines to layouts/partials/head.html:</p>
-<pre tabindex="0"><code>{{ range .Site.Params.custom_css -}}
-&lt;link rel=&#34;stylesheet&#34; href=&#34;{{ . | relURL }}&#34;&gt;
-{{- end }}
-</code></pre><p>See <a href="https://github.com/charliemcelfresh/charlie-blog/blob/main/layouts/partials/head.html#L4">https://github.com/charliemcelfresh/charlie-blog/blob/main/layouts/partials/head.html#L4</a></p>
-<p>Add <code>static/css/custom.css</code>. Here&rsquo;s mine:</p>
-<pre tabindex="0"><code>code {
-  background-color: aliceblue;
-  padding: 12px;
-}
-</code></pre><p>Add this line to your hugo.toml file, to ensure Hugo includes custom.css when it runs locally / compiles for production:</p>
-<pre tabindex="0"><code>[params]
-  custom_css = [&#34;css/custom.css&#34;]
-</code></pre><p>Add this section + line to your hugo.toml file at the base of the app. It ensures that where we compile our static pages, Hugo does not include the hostname in all our paths:</p>
-<pre tabindex="0"><code>baseURL = &#39;/&#39;
-</code></pre><p>To create static files to serve in production, run</p>
-<p><code>hugo</code></p>
-<p>and notice all the new static files that were generated in <code>/public</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">cp</span> <span style="color:#a6e22e">themes</span><span style="color:#f92672">/</span><span style="color:#a6e22e">ezhil</span><span style="color:#f92672">/</span><span style="color:#a6e22e">layouts</span><span style="color:#f92672">/</span><span style="color:#a6e22e">partials</span><span style="color:#f92672">/</span><span style="color:#a6e22e">head</span>.<span style="color:#a6e22e">html</span> <span style="color:#a6e22e">layouts</span><span style="color:#f92672">/</span><span style="color:#a6e22e">partials</span><span style="color:#f92672">/</span></span></span></code></pre></div>
+<p>Add these lines to layouts/partials/head.html:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span>{{ <span style="color:#66d9ef">range</span> .<span style="color:#a6e22e">Site</span>.<span style="color:#a6e22e">Params</span>.<span style="color:#a6e22e">custom_css</span> <span style="color:#f92672">-</span>}}
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span>&lt;<span style="color:#a6e22e">link</span> <span style="color:#a6e22e">rel</span>=<span style="color:#e6db74">&#34;stylesheet&#34;</span> <span style="color:#a6e22e">href</span>=<span style="color:#e6db74">&#34;{{ . | relURL }}&#34;</span>&gt;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3</span><span>{{<span style="color:#f92672">-</span> <span style="color:#a6e22e">end</span> }}</span></span></code></pre></div>
+<p>See <a href="https://github.com/charliemcelfresh/charlie-blog/blob/main/layouts/partials/head.html#L4">https://github.com/charliemcelfresh/charlie-blog/blob/main/layouts/partials/head.html#L4</a></p>
+<p>Add <strong>static/css/custom.css</strong>. Here&rsquo;s mine:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#a6e22e">code</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span>  <span style="color:#a6e22e">background</span><span style="color:#f92672">-</span><span style="color:#a6e22e">color</span>: <span style="color:#a6e22e">aliceblue</span>;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3</span><span>  <span style="color:#a6e22e">padding</span>: <span style="color:#ae81ff">12</span><span style="color:#a6e22e">px</span>;
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4</span><span>}</span></span></code></pre></div>
+<p>Add this line to your hugo.toml file, to ensure Hugo includes custom.css when it runs locally / compiles for production:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span>[<span style="color:#a6e22e">params</span>]
+</span></span><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span>  <span style="color:#a6e22e">custom_css</span> = [<span style="color:#e6db74">&#34;css/custom.css&#34;</span>]</span></span></code></pre></div>
+<p>Add this section + line to your hugo.toml file at the base of the app. It ensures that where we compile our static pages, Hugo does not include the hostname in all our paths:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#a6e22e">baseURL</span> = <span style="color:#e6db74">&#39;/&#39;</span></span></span></code></pre></div>
+<p>To create static files to serve in production, run</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#960050;background-color:#1e0010">$</span> <span style="color:#a6e22e">hugo</span></span></span></code></pre></div>
+<p>and notice all the new static files that were generated in <strong>/public</strong></p>
 
 		</div>
 
