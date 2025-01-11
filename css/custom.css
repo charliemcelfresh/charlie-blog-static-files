@@ -6,9 +6,11 @@ pre {
   overflow-x: hidden;
 }
 code {
-  margin: 10px;
+/*  margin: 10px;*/
   width: 100%;
-  padding: 20px;
+  padding: 10px;
+  padding-top: 14px;
+  padding-bottom: 14px;
   font-size: 0.8em;
   background-color: black;
 }
