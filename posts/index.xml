@@ -6,8 +6,15 @@
     <description>Recent content in Posts on McElfresh Blog</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 07 Jan 2025 21:26:09 -0800</lastBuildDate>
+    <lastBuildDate>Sat, 11 Jan 2025 22:53:56 -0800</lastBuildDate>
     <atom:link href="https://www.mcelfresh.info/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Go Interfaces Part 4</title>
+      <link>https://www.mcelfresh.info/posts/go-interfaces-method-sets-practical-patterns/</link>
+      <pubDate>Sat, 11 Jan 2025 22:53:56 -0800</pubDate>
+      <guid>https://www.mcelfresh.info/posts/go-interfaces-method-sets-practical-patterns/</guid>
+      <description>Intro Method set interfaces interfaces provide means to describe and implement useful, prescribed, and suggested behaviors.&#xA;I&amp;rsquo;ll refer to &amp;ldquo;method set interfaces&amp;rdquo; simply as &amp;ldquo;interfaces&amp;rdquo; throughout this blog post.&#xA;Exported Types Among the primary reasons to export an interface type: 1) to provide a simple type that is integral to commonly-used packages (fmt.Stringer); 2) to provide a commonly-used building block (io.Reader, io.Writer, etc.), 3) to provide prescribed behaviors (sort.Interface, Twirp exported service interfaces, imported interfaces), 4) to provide suggested behaviors (logrus.</description>
+    </item>
     <item>
       <title>Go Interfaces Part 3</title>
       <link>https://www.mcelfresh.info/posts/go-interfaces-method-sets-borrowing/</link>
