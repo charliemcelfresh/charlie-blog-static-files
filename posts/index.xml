@@ -6,15 +6,8 @@
     <description>Recent content in Posts on McElfresh Blog</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 21 Apr 2025 12:03:05 -0700</lastBuildDate>
+    <lastBuildDate>Sat, 11 Jan 2025 22:53:56 -0800</lastBuildDate>
     <atom:link href="https://www.mcelfresh.info/posts/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>A Successful Engineering Squad</title>
-      <link>https://www.mcelfresh.info/posts/successful-engineering-squad/</link>
-      <pubDate>Mon, 21 Apr 2025 12:03:05 -0700</pubDate>
-      <guid>https://www.mcelfresh.info/posts/successful-engineering-squad/</guid>
-      <description>A successful engineering squad knocks out simple, well-designed, bug-free, extensible work, with little to no tech debt, sprint after sprint. Tech specs become tickets, tickets are subtasked and pointed, and the volume of tasks in each sprint matches the capacity of engineers on the team. Tasks (small tickets or subtasks of larger tickets) typically take 1/2 day to 1 day, and are pushed to production as they are completed.&#xA;Moreover, context is king &amp;ndash; each squad within an engineering org understands the product, and the company drivers, such that it understands how its work impacts the success of the entire Engineering department, other departments, and the entire company.</description>
-    </item>
     <item>
       <title>Go Interfaces Part 4</title>
       <link>https://www.mcelfresh.info/posts/go-interfaces-method-sets-practical-patterns/</link>
