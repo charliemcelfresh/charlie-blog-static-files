@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Go HTTP server - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:url" content="https://www.mcelfresh.info/posts/go-http-server/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="Go HTTP server">
+  <meta property="og:description" content="Overview Where a Go HTTP server is started, its listener blocks until a client connects to the host &#43; port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.
+The usual practice with HTTP client - server connections is that connections should be short-lived.">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2023-07-17T12:27:40-08:00">
+    <meta property="article:modified_time" content="2023-07-17T12:27:40-08:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Go HTTP server">
+  <meta name="twitter:description" content="Overview Where a Go HTTP server is started, its listener blocks until a client connects to the host &#43; port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.
+The usual practice with HTTP client - server connections is that connections should be short-lived.">
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/main.css" />
+
+	
+	<script src="https://www.mcelfresh.info/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="stylesheet" href="/css/custom.css">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="https://www.mcelfresh.info/">
+	<h1 class="site-title"><a href="https://www.mcelfresh.info/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">Go HTTP server</h1>
+			<div class="meta">Posted at &mdash; Jul 17, 2023</div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="overview">Overview</h3>
+<p>Where a Go HTTP server is started, its listener blocks until a client connects to the host + port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.</p>
+<p>The usual practice with HTTP client - server connections is that connections should be short-lived. Ideally, where the client makes a request, if that request cannot be satisfied within a short timeframe, the connection is timed out, an error is returned to the client, the connection is destroyed, and resources are cleaned up on the server. If the client cancels a request, typically that cancellation is honored on the server, the connection is destroyed, and resources are cleaned up on the server.</p>
+<p>The usual practice with a running server is that where a shutdown signal is sent to a server, active connections are given the opportunity, via a timer, to complete, before the server, and all related processes, applications, and services, are shut down gracefully. If the shutdown is part of a deploy, an updated server is started, and it handles all new connections. Existing connections to the existing server are permitted to complete or fail, then the existing server is shut down.</p>
+<p>Therefore, at both the level of the server, and of each connection, we want to implement timeouts, a timer, and intentionally shut down the server, along with other applications and / or connections to those applications. For example, if our HTTP server is connected to a database, or other services that use persistent connections, we want to close the connections from our server to the database. If our HTTP server is connected to other HTTP services with short-lived connections, there may be nothing at all we have to do, as it is likely those connections will be cleaned up merely by waiting some short time period, and exiting our HTTP server.</p>
+<h3 id="implementing-a-go-http-server-with-graceful-shutdown">Implementing a Go HTTP Server with Graceful Shutdown</h3>
+<p>The key points in starting, operating, and gracefully shutting down a Go HTTP server are:</p>
+<ul>
+<li>What roles does Go&rsquo;s http package, Go itself, and the OS perform?</li>
+<li>Which parts of our code block?</li>
+<li>What signals might be received?</li>
+<li>What to do with different types of errors?</li>
+<li>How to gracefully shut down related services, and/or close connections to them?</li>
+</ul>
+<h4 id="gos-http-package-go-and-the-os">Go&rsquo;s http Package, Go, and the OS</h4>
+<p>The key component in a Go HTTP server is its net.Listener. A net.Listener includes a &ldquo;listening&rdquo; or &ldquo;passive&rdquo; socket whose job is to &ldquo;block&rdquo;, ie wait for the OS to push connections onto the OS&rsquo;s &ldquo;accept&rdquo; queue. Where a Go HTTP server is started, its listener&rsquo;s Accept method is immediately called and, if there is no data connection on the accept queue, the listener blocks, meaning that the OS puts the Go runtime thread that is running the listener into a paused state. Where a data connection is put onto the accept queue, the kernel wakes up the Go runtime thread, which dequeues the data connection, and passes the data connection to a handler, which the Go runtime starts in its own goroutine.</p>
+<p>These completed data connections do more than a listening socket does. They typically pass data back and forth between client and server.</p>
+<p>EPoll is the Linux syscall interface that manages sockets as described above. Its name is unfortunate; blocking does not work by polling at intervals. Epoll operates via &ldquo;interrupt-driven I/O&rdquo;. Where the state of a socket changes, and where this is a state that the kernel has registered interest in, an interrupt (either a hardware interrupt, in the case of a physical network, or a software interrupt, in the case of a virtual network, unix domain socket, or other non-hardware construct) is sent to the kernel, the kernel looks up the sleeping Go runtime thread that is associated with the registered event on that socket, the Go runtime thread wakes up the handler associated with that registered event / socket, and runs it.</p>
+<p>At this point the completed connection is in an &ldquo;ESTABLISHED&rdquo; state, and the client may begin to send data over the connection. For a simple &ldquo;Hello, world!&rdquo; response, which is likely to be immediately available from the handler, the handler will not block, but will instead immediately send data to the client.</p>
+<p>But suppose the handler must do more? Suppose the handler must retrieve data from a database, parse that data, and return it to the client? The same series of steps occurs with this data connection socket as occurred with the listener socket. Where the request is sent to the database, but the database does not respond immediately, the handler will block &ndash; ie, the OS kernel will park the Go runtime thread that is waiting on the database&rsquo;s socket. When the database begins to send data over the connection, the kernel will wake up the Go runtime thread that it parked, the Go runtime thread will wake up the goroutine it assigned to this socket, and the goroutine will run the handler, which will parse the data it received from the database, and send that data to the client. When the handler has completed sending that data back to the client, the handler will close the socket, and eventually the memory represented by the completed goroutine that is running the handler will be garbage collected.</p>
+<h4 id="code-overview">Code Overview</h4>
+<p>In the below code:</p>
+<ul>
+<li>All objects passed into the base object, <code>provider</code>, have interface types, so we can mock them, and test the entire control flow, including log messages</li>
+<li>We use <code>signal.NotifyContext</code> to look for <code>os.SIGINT</code> (CTRL-C, typically sent in development) and <code>os.SIGTERM</code> (typically sent in production and other environments)</li>
+<li>We start our server in a separate goroutine, with a waitgroup <code>wg</code>, and call <code>wg.Wait()</code> at the bottom of <code>Serve</code>, and therefore we wait for that goroutine to exit before we exit <code>Serve</code>
+<ul>
+<li>Inside this goroutine, our net.Listener blocks</li>
+</ul>
+</li>
+<li>Our main goroutine blocks with a <code>select</code>, which listens for signals on two channels:
+<ul>
+<li><code>&lt;-signalCtx.Done()</code> receives a signal where <code>os.SIGINT</code> or <code>os.SIGTERM</code> is sent</li>
+<li><code>&lt;-errCh</code> receives a signal where <code>p.server.Serve</code> returns an error</li>
+<li>In both cases, we call our internal <code>shutdown</code> function, and attempt to exit gracefully</li>
+</ul>
+</li>
+<li>Our <code>shutdown</code> function
+<ul>
+<li>starts a <code>context.WithTimeout</code></li>
+<li>Thereafter, this function will return either where
+<ul>
+<li><code>p.server.Shutdown</code> and <code>p.repository.Close</code> both either complete, or shutdown</li>
+<li><code>context.WithTimeout</code> expires</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<pre tabindex="0"><code>package server
+
+import (
+	&#34;context&#34;
+	&#34;errors&#34;
+	&#34;github.com/charliemcelfresh/charlie-go/internal/model&#34;
+	&#34;github.com/go-chi/chi/v5&#34;
+	&#34;github.com/go-chi/chi/v5/middleware&#34;
+	&#34;net&#34;
+	&#34;net/http&#34;
+	_ &#34;net/http/pprof&#34;
+	&#34;os/signal&#34;
+	&#34;sync&#34;
+	&#34;syscall&#34;
+	&#34;time&#34;
+)
+
+type Tokener interface {
+	Parse(token string) (Claims, error)
+}
+
+type Logger interface {
+	Error(msg string, args ...any)
+	Info(msg string, args ...any)
+}
+
+type Repo interface {
+	GetItems(ctx context.Context, perPage, page int) ([]model.Item, error)
+	CreateItem(ctx context.Context, item model.Item) (model.Item, error)
+	Close() error
+}
+
+type Server interface {
+	Serve(l net.Listener) error
+	Shutdown(ctx context.Context) error
+}
+
+type Listener interface {
+	Close() error
+	Accept() (net.Conn, error)
+	Addr() net.Addr
+}
+
+type provider struct {
+	jwt        Tokener
+	repository Repo
+	logger     Logger
+	server     Server
+	listener   Listener
+}
+
+func NewProvider(repo Repo, listener Listener, logger Logger, token Tokener) provider {
+	provider := provider{
+		jwt:        token,
+		repository: repo,
+		logger:     logger,
+	}
+
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+	router.Use(middleware.Recoverer)
+	router.Use(provider.AddContentTypeToResponse)
+	router.Group(
+		func(r chi.Router) {
+			r.Use(provider.Authorize)
+			r.Get(&#34;/api/v1/items&#34;, provider.GetItems)
+			r.Post(&#34;/api/v1/item&#34;, provider.CreateItem)
+		},
+	)
+
+	provider.listener = listener
+
+	httpServer := &amp;http.Server{
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       10 * time.Second,
+		Handler:           router,
+	}
+
+	provider.server = httpServer
+
+	return provider
+}
+
+func (p *provider) Serve(parentCtx context.Context) {
+	// Set up graceful shutdown using os.Signal, via signal.NotifyContext
+	signalCtx, cleanupSignals := signal.NotifyContext(parentCtx, syscall.SIGINT, syscall.SIGTERM)
+	// clean up signal handling when function exits
+	defer cleanupSignals()
+
+	errCh := make(chan error, 1)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := p.server.Serve(p.listener); err != nil &amp;&amp; !errors.Is(err, http.ErrServerClosed) {
+			p.logger.Error(&#34;error starting Server, exiting&#34;, &#34;err&#34;, err)
+			errCh &lt;- err
+		}
+	}()
+
+	shutdown := func(p *provider) {
+		timeoutCtx, timeoutCancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
+		defer timeoutCancelFunc()
+
+		if err := p.server.Shutdown(timeoutCtx); err != nil {
+			p.logger.Error(&#34;httpServer.Shutdown error&#34;, &#34;err&#34;, err)
+		}
+
+		rErr := p.repository.Close()
+		if rErr != nil {
+			p.logger.Error(&#34;error closing p.repository, returning anyway&#34;, &#34;rErr&#34;, rErr)
+		} else {
+			p.logger.Info(&#34;p.repository.Close complete&#34;)
+		}
+		p.logger.Info(&#34;graceful shutdown complete&#34;)
+	}
+
+	select {
+	case &lt;-signalCtx.Done():
+		p.logger.Info(&#34;received shutdown signal, exiting&#34;, &#34;signalErr&#34;, signalCtx.Err())
+		shutdown(p)
+	case err := &lt;-errCh:
+		p.logger.Error(&#34;httpServer.Serve encountered error, exiting&#34;, &#34;err&#34;, err)
+		shutdown(p)
+	}
+	wg.Wait()
+}
+</code></pre><h4 id="conclusion">Conclusion</h4>
+<p>The above demonstrates one way to start, operate, and gracefully shut down a Go HTTP server. We could start our server in the main goroutine, and put cancellation into a separate goroutine. We could have returned errors to <code>Serve</code>&rsquo;s calling function. We could avoid allocations at critical performance points, by avoiding the use of <code>Listener</code> and <code>Repo</code> interfaces. We could think about goroutine pools for our handlers. We could add instrumentation both at the network level, and at the code level, in order to uncover any helpful optimizations.</p>
+<p>The point is that the Go http package provides, out of the box, a high performance HTTP server, that adheres to typical HTTP practices, and uses the power of Go and also of the OS.</p>
+
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>
