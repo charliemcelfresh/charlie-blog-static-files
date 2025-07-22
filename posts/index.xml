@@ -6,8 +6,15 @@
     <description>Recent content in Posts on McElfresh Blog</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 11 Jan 2025 22:53:56 -0800</lastBuildDate>
+    <lastBuildDate>Mon, 21 Jul 2025 12:27:40 -0800</lastBuildDate>
     <atom:link href="https://www.mcelfresh.info/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Go HTTP server</title>
+      <link>https://www.mcelfresh.info/posts/go-http-server/</link>
+      <pubDate>Mon, 21 Jul 2025 12:27:40 -0800</pubDate>
+      <guid>https://www.mcelfresh.info/posts/go-http-server/</guid>
+      <description>Overview Where a Go HTTP server is started, its listener blocks until a client connects to the host + port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.&#xA;The usual practice with HTTP client - server connections is that connections should be short-lived.</description>
+    </item>
     <item>
       <title>Go Interfaces Part 4</title>
       <link>https://www.mcelfresh.info/posts/go-interfaces-method-sets-practical-patterns/</link>

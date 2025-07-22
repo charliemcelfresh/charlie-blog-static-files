@@ -6,18 +6,16 @@
 	<meta property="og:url" content="https://www.mcelfresh.info/posts/go-http-server/">
   <meta property="og:site_name" content="McElfresh Blog">
   <meta property="og:title" content="Go HTTP server">
-  <meta property="og:description" content="Overview Where a Go HTTP server is started, its listener blocks until a client connects to the host &#43; port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.
-The usual practice with HTTP client - server connections is that connections should be short-lived.">
+  <meta property="og:description" content="Implementing a Go HTTP Server with Graceful Shutdown">
   <meta property="og:locale" content="en_us">
   <meta property="og:type" content="article">
     <meta property="article:section" content="posts">
-    <meta property="article:published_time" content="2023-07-17T12:27:40-08:00">
-    <meta property="article:modified_time" content="2023-07-17T12:27:40-08:00">
+    <meta property="article:published_time" content="2025-07-21T12:27:40-08:00">
+    <meta property="article:modified_time" content="2025-07-21T12:27:40-08:00">
 
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Go HTTP server">
-  <meta name="twitter:description" content="Overview Where a Go HTTP server is started, its listener blocks until a client connects to the host &#43; port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.
-The usual practice with HTTP client - server connections is that connections should be short-lived.">
+  <meta name="twitter:description" content="Implementing a Go HTTP Server with Graceful Shutdown">
 <link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
 
 	<link rel="stylesheet" type="text/css" media="screen" href="https://www.mcelfresh.info/css/normalize.css" />
@@ -53,7 +51,7 @@ The usual practice with HTTP client - server connections is that connections sho
 
 		<div class="post-header">
 			<h1 class="title">Go HTTP server</h1>
-			<div class="meta">Posted at &mdash; Jul 17, 2023</div>
+			<div class="meta">Posted at &mdash; Jul 21, 2025</div>
 		</div>
 
 		<div class="markdown">
