@@ -86,13 +86,6 @@
       <description>What is a Go Slice? A Go slice is a descriptor of an array segment, with three fields:&#xA;A pointer to an element of its underlying array The slice&amp;rsquo;s length The slice&amp;rsquo;s capacity I think part of the misconception that &amp;ldquo;slices are pointers&amp;rdquo; arises from the fact that a slice contains a pointer to a value in its underlying array.&#xA;Here are two examples where we need slice pointers.&#xA;Use a Type, Based on a Slice, as a Pointer Receiver One common idiom is to use a type, based on a slice, as a method receiver, as with a Heap.</description>
     </item>
     <item>
-      <title>Go HTTP server</title>
-      <link>https://www.mcelfresh.info/posts/go-http-server/</link>
-      <pubDate>Mon, 17 Jul 2023 12:27:40 -0800</pubDate>
-      <guid>https://www.mcelfresh.info/posts/go-http-server/</guid>
-      <description>Overview Where a Go HTTP server is started, its listener blocks until a client connects to the host + port the listener is bound to. The client connection is started up in its own goroutine, and runs until it returns either success or error. Because goroutines are very small, lightweight stacks, a Go HTTP server can start thousands or even millions of handlers, each in its own goroutine.&#xA;The usual practice with HTTP client - server connections is that connections should be short-lived.</description>
-    </item>
-    <item>
       <title>Twirp -- Build Simple, High Performance Go HTTP Protobuf Services</title>
       <link>https://www.mcelfresh.info/posts/charlie-go-part-1/</link>
       <pubDate>Tue, 28 Nov 2023 11:18:40 -0800</pubDate>
