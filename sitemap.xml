@@ -2,65 +2,65 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://www.mcelfresh.info/posts/go-http-server/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-http-server/</loc>
     <lastmod>2025-07-21T12:27:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/go-interfaces-method-sets-practical-patterns/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-interfaces-method-sets-practical-patterns/</loc>
     <lastmod>2025-01-11T22:53:56-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/go-interfaces-method-sets-borrowing/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-interfaces-method-sets-borrowing/</loc>
     <lastmod>2025-01-07T21:26:09-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/go-interfaces-method-sets-assignment/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-interfaces-method-sets-assignment/</loc>
     <lastmod>2025-01-07T21:26:09-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/go-interfaces-introduction/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-interfaces-introduction/</loc>
     <lastmod>2025-01-07T21:26:09-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/typescript-concurrency/</loc>
+    <loc>https://charliemcelfresh.com/posts/typescript-concurrency/</loc>
     <lastmod>2024-05-24T14:45:10-07:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/go-vs-postgrest-vs-sinatra-vs-rails/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-vs-postgrest-vs-sinatra-vs-rails/</loc>
     <lastmod>2024-04-06T16:10:46-07:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/create-multiple-postgres-records-one-query/</loc>
+    <loc>https://charliemcelfresh.com/posts/create-multiple-postgres-records-one-query/</loc>
     <lastmod>2024-03-02T11:30:41-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/how-to-sort-a-go-array/</loc>
+    <loc>https://charliemcelfresh.com/posts/how-to-sort-a-go-array/</loc>
     <lastmod>2024-01-02T14:34:05-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/jwts-vs-secure-cookies/</loc>
+    <loc>https://charliemcelfresh.com/posts/jwts-vs-secure-cookies/</loc>
     <lastmod>2023-12-26T11:05:54-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/move-blog-to-digital-ocean/</loc>
+    <loc>https://charliemcelfresh.com/posts/move-blog-to-digital-ocean/</loc>
     <lastmod>2023-12-18T12:26:51-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/go-slices-are-not-pointers/</loc>
+    <loc>https://charliemcelfresh.com/posts/go-slices-are-not-pointers/</loc>
     <lastmod>2023-12-15T12:51:36-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/charlie-go-part-1/</loc>
+    <loc>https://charliemcelfresh.com/posts/charlie-go-part-1/</loc>
     <lastmod>2023-11-28T11:18:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/hugo-aws-part-4/</loc>
+    <loc>https://charliemcelfresh.com/posts/hugo-aws-part-4/</loc>
     <lastmod>2023-11-25T11:18:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/hugo-aws-part-3/</loc>
+    <loc>https://charliemcelfresh.com/posts/hugo-aws-part-3/</loc>
     <lastmod>2023-11-25T11:18:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/hugo-aws-part-2/</loc>
+    <loc>https://charliemcelfresh.com/posts/hugo-aws-part-2/</loc>
     <lastmod>2023-11-25T11:18:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/hugo-aws-part-1/</loc>
+    <loc>https://charliemcelfresh.com/posts/hugo-aws-part-1/</loc>
     <lastmod>2023-11-25T11:18:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/</loc>
+    <loc>https://charliemcelfresh.com/</loc>
     <lastmod>2025-07-21T12:27:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/posts/</loc>
+    <loc>https://charliemcelfresh.com/posts/</loc>
     <lastmod>2025-07-21T12:27:40-08:00</lastmod>
   </url><url>
-    <loc>https://www.mcelfresh.info/categories/</loc>
+    <loc>https://charliemcelfresh.com/categories/</loc>
   </url><url>
-    <loc>https://www.mcelfresh.info/tags/</loc>
+    <loc>https://charliemcelfresh.com/tags/</loc>
   </url>
 </urlset>
