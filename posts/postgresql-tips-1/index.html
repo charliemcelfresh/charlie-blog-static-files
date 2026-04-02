@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>PostgreSQL Optimization Tips (Part 1) - McElfresh Blog</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:url" content="http://localhost:1313/posts/postgresql-tips-1/">
+  <meta property="og:site_name" content="McElfresh Blog">
+  <meta property="og:title" content="PostgreSQL Optimization Tips (Part 1)">
+  <meta property="og:description" content="PostgreSQL insights that will put you ahead of the crowd">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2023-12-09T14:57:52-08:00">
+    <meta property="article:modified_time" content="2023-12-09T14:57:52-08:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="PostgreSQL Optimization Tips (Part 1)">
+  <meta name="twitter:description" content="PostgreSQL insights that will put you ahead of the crowd">
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="http://localhost:1313/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="http://localhost:1313/css/main.css" />
+
+	
+	<script src="http://localhost:1313/js/main.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<base href="http://localhost:1313/">
+	<h1 class="site-title"><a href="http://localhost:1313/">McElfresh Blog</a></h1>
+	<div class="site-description"><h2>Go, PostgreSQL, MySQL, Ruby, Rails, Sinatra, etc.</h2><nav class="nav social">
+			<ul class="flat"></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">PostgreSQL Optimization Tips (Part 1)</h1>
+			<div class="meta">Posted at &mdash; Dec 9, 2023 <span class="draft-label">DRAFT</span> </div>
+		</div>
+
+		<div class="markdown">
+			<h3 id="postgresql-tips">PostgreSQL Tips</h3>
+<p>This series of posts focuses on PostgreSQL problems I&rsquo;ve often seen in production applications.</p>
+<h4 id="make-an-upgrade--tuning-plan">Make an Upgrade / Tuning Plan</h4>
+<p>Upgrades and some settings changes will require restarts. This means your DB will be offline for some period. With planning, this period can be quite brief.</p>
+<p>My preferred way</p>
+<h4 id="never-select">Never select(*)</h4>
+<p>Object Relation Mappers (ORMs) like Rails ActiveRecord will often select(*) by default. In my view, this is never correct, for these reasons:</p>
+<ul>
+<li>There is a cost to pulling data over the wire. This cost can be quite meaningful with tables that have lots of data per row, like, perhaps, big JSON/JSONB fields</li>
+</ul>
+<h4 id="prefer-jsonb-over-json">Prefer JSONB over JSON</h4>
+<p>JSONB can do everything JSON can do, but, JSONB can be indexed with Generalized Inverted Indexes (GIN). Querying GIN-indexed JSONB fields is quite fast, and often provides a simple and productive path toward optimal table structure.</p>
+<p>Here&rsquo;s a common situation: You receive JSON events that all share some common fields you want to query now. Some remaining fields overlap, some don&rsquo;t. And, you&rsquo;re not sure which fields you might need later.</p>
+<p>Often, the optimal path forward is:</p>
+<ol>
+<li>Store the raw JSON into a GIN-indexed JSONB field, and query fields using whichever JSONB query syntax your PostgreSQL installation supports</li>
+</ol>
+<pre tabindex="0"><code>show that here
+</code></pre><ol start="2">
+<li>
+<p>Add columns as needed, and write data from JSON events into those columns. Often, TRIGGERS + FUNCTIONS works very well for this. This may seem redundant, but it is often useful to pull data out of a JSONB field, into a column, to make it easier to look at data. And, you may want to combine JSON fields into one, more meanginful column.</p>
+</li>
+<li>
+<p>Continue to keep the raw JSONB field, as long as it makes sense in terms of space, and the resources required to create indexes on it are available.</p>
+</li>
+</ol>
+<p>If it makes financial sense to ship these events into a data warehouse, note that a data warehouse like Snowflake can search through billions of rows of JSON data in a few seconds. (PostgreSQL does not excel at this.) This can be quite useful to search detail data over a long period of time, for forensic analysis, to validate JSON structure and changes over time, and to uncover patterns you may want to implement in a more structured way.</p>
+<h4 id="tune-your-db-params">Tune Your DB Params</h4>
+<p>Tuning a PostgreSQL install to make it perform optimally for your needs is very simple, and it&rsquo;s a must. Just do this:</p>
+<ul>
+<li>Visit <a href="https://pgtune.leopard.in.ua">pgtune</a>, input your settings, and then change your pg.conf (or RDF parameter groups, or similar) to reflect those changes</li>
+<li>Read <a href="https://wiki.postgresql.org/wiki/Tuning_Your_PostgreSQL_Server">the PostgreSQL blog</a> regarding PosgreSQL tuning, and begin to try to understand the more intricate details of what all the various settings do</li>
+</ul>
+<p>The initial stab at this takes an hour or so, and will get you 90%+ of the way there. Spend time</p>
+<h4 id="common-table-expressions-ctes">Common Table Expressions (CTEs)</h4>
+<p>I find Common Table Expressions (CTEs) to be very expressive, and easier to understand, than other PostgreSQL syntaxes.</p>
+<p>Essentially, CTEs allow us to express queries as &ldquo;temporary tables&rdquo; we can join together into a larger query.</p>
+<h5 id="writing-optimal-queries">Writing Optimal Queries</h5>
+<p>When I&rsquo;m performing joins, I want to make sure I&rsquo;m forcing the PostgreSQL query planner to make the smallest possible set. This is often very simple to express using CTEs, where we explicitly create one &ldquo;temporary table&rdquo; that will force the smallest possible set we want in our output, then join other &ldquo;temporary tables&rdquo; to it:</p>
+<pre tabindex="0"><code>WITH (companies_with_open_invoices) AS (
+  SELECT
+
+)
+}
+</code></pre>
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		</div>
+	<div class="footer wrapper">
+  <nav class="nav">
+    <div>Comments? <a href="https://github.com/charliemcelfresh/charlie-blog-static-files/issues">Create an issue</a> | <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> |
+      Built with <a href="https://gohugo.io">Hugo</a></div>
+  </nav>
+</div>
+</body>
+</html>
